@@ -1,0 +1,74 @@
+---
+title: "Reproducible Reports with Quarto"
+subtitle: "A sample document"
+author:
+  - name: Ada Example
+    affiliations: Institute of Examples
+  - name: Grace Sample
+    affiliations: University of Placeholders
+date: 2026-01-15
+abstract: |
+  This document is the shared sample used to preview Quarto's built-in
+  document formats. It exercises the elements most reports need: headings,
+  lists, a table, an equation, a callout, a quotation and a code listing.
+toc: true
+number-sections: true
+---
+
+# Introduction
+
+Quarto turns a plain-text source into many outputs. One document can become a
+web page, a PDF typeset with LaTeX or Typst, or a Word file, while the
+analysis that produces its numbers lives right next to the prose.
+
+The workflow is short:
+
+1. Write text and code in a `.qmd` file
+2. Choose one or more output formats in the front matter
+3. Render, and re-render whenever the data changes
+
+> Code runs where the prose lives, so results never drift out of date.
+
+# Results
+
+@tbl-penguins summarises the Palmer penguins data set. Values are means per
+species.
+
+| Species   | Count | Bill (mm) | Mass (g) |
+|-----------|------:|----------:|---------:|
+| Adelie    |   152 |      38.8 |    3,701 |
+| Chinstrap |    68 |      48.8 |    3,733 |
+| Gentoo    |   124 |      47.5 |    5,076 |
+
+: Penguin measurements by species {#tbl-penguins}
+
+The sample mean of $n$ observations is
+
+$$
+\bar{x} = \frac{1}{n} \sum_{i=1}^{n} x_i .
+$$ {#eq-mean}
+
+::: {.callout-note}
+## Callouts
+
+Callouts come in five flavours: note, tip, important, caution and warning.
+:::
+
+## Computation
+
+Code chunks run at render time. This listing is shown, not executed:
+
+```python
+import seaborn as sns
+
+df = sns.load_dataset("penguins")
+df.groupby("species").bill_length_mm.mean().round(1)
+```
+
+# Discussion
+
+Plain text sources are friendly to version control, review and
+collaboration. Because every number in @tbl-penguins and every result derived
+from @eq-mean is computed during rendering, the report stays correct as the
+data evolves. Cross-references, citations and figure numbering are handled
+for every output format alike.
