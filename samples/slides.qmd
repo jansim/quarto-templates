@@ -1,0 +1,76 @@
+---
+title: "Reproducible Reports with Quarto"
+subtitle: "A sample deck"
+author: Ada Example
+institute: Institute of Examples
+date: 2026-01-15
+---
+
+## Welcome
+
+This deck is the shared sample used to preview Quarto's built-in
+presentation formats.
+
+- Plain bullet points with **bold** and *italics*
+- [Links](https://quarto.org) and `inline code`
+    - and nested bullets
+- Columns, tables, callouts and maths
+
+# Writing
+
+## Two columns
+
+:::: {.columns}
+
+::: {.column width="50%"}
+### Left
+
+- One source document
+- Many output formats
+- Version control friendly
+:::
+
+::: {.column width="50%"}
+### Right
+
+- HTML slides via reveal.js
+- PDF slides via Beamer
+- PowerPoint, too
+:::
+
+::::
+
+## Code runs where the prose lives
+
+```python
+import seaborn as sns
+
+df = sns.load_dataset("penguins")
+df.groupby("species").bill_length_mm.mean().round(1)
+```
+
+# Results
+
+## Palmer penguins at a glance
+
+| Species   | Count | Bill (mm) | Mass (g) |
+|-----------|------:|----------:|---------:|
+| Adelie    |   152 |      38.8 |    3,701 |
+| Chinstrap |    68 |      48.8 |    3,733 |
+| Gentoo    |   124 |      47.5 |    5,076 |
+
+## Maths and callouts
+
+The mean of $n$ observations is
+
+$$
+\bar{x} = \frac{1}{n} \sum_{i=1}^{n} x_i
+$$
+
+::: {.callout-tip}
+Callouts come in five flavours: note, tip, important, caution and warning.
+:::
+
+## Thank you
+
+Questions?

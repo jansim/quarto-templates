@@ -1,0 +1,155 @@
+# Templates shown in the gallery, in display order.
+#
+# Each [table] is one gallery entry; its key is the entry's id (used in URLs
+# and output paths). Only `title` and `format` are required:
+#
+#   title    Display name.
+#   format   Quarto format to render, or a list of formats (one per output),
+#            e.g. "html", "typst", "riso-revealjs", ["plos-pdf", "plos-html"].
+#   repo     GitHub "owner/repo" the template comes from. Leave out for
+#            Quarto's built-in formats, which render a shared sample from
+#            samples/.
+#   file     Document to render, relative to the repo root.
+#            Default: "template.qmd" (what `quarto use template` creates).
+#
+# Optional:
+#
+#   ref          Branch or tag to render (default: the repo's default branch).
+#   options      Format options merged into the document's front matter,
+#                e.g. options = { titlepage = "formal" }, so one repo can
+#                yield several entries.
+#   description  One sentence shown in the template's popup.
+#   preview-page Page of the PDF to use as the thumbnail (default: 1).
+#
+# Kind (document or slides) and output (PDF or HTML) are inferred from the
+# format name; the setup instructions are derived from `repo` and `file`.
+
+# --- Built-in formats -------------------------------------------------------
+
+[html]
+title = "HTML Document"
+format = "html"
+
+[pdf]
+title = "PDF Document (LaTeX)"
+format = "pdf"
+
+[typst]
+title = "Typst Document"
+format = "typst"
+
+[revealjs]
+title = "Reveal.js"
+format = "revealjs"
+
+[beamer]
+title = "Beamer"
+format = "beamer"
+
+# --- jansim/quarto-revealjs-themes ------------------------------------------
+
+[riso]
+title = "Riso Zine"
+repo = "jansim/quarto-revealjs-themes"
+format = "riso-revealjs"
+description = "Two risograph inks on uncoated paper, with halftone fields and misregistered type."
+
+[nocturne]
+title = "Nocturne"
+repo = "jansim/quarto-revealjs-themes"
+format = "nocturne-revealjs"
+description = "A dark keynote: serif drama on near-black, quiet orbit lines and one luminous accent."
+
+[blueprint]
+title = "Blueprint"
+repo = "jansim/quarto-revealjs-themes"
+format = "blueprint-revealjs"
+description = "Technical drawing on cyanotype blue, with a faint grid, dimension lines and a title block."
+
+[scholar]
+title = "Scholar"
+repo = "jansim/quarto-revealjs-themes"
+format = "scholar-revealjs"
+description = "The journal article, projected: book serifs, booktabs tables and small-caps labels."
+
+[pop]
+title = "Brutalist Pop"
+repo = "jansim/quarto-revealjs-themes"
+format = "pop-revealjs"
+description = "Neo-brutalist UI energy: thick black outlines, hard offset shadows and flat primaries."
+
+# --- nmfs-opensci/quarto_titlepages -----------------------------------------
+
+[titlepage-great-wave]
+title = "Title Pages: Great Wave Cover"
+repo = "nmfs-opensci/quarto_titlepages"
+file = "example_2.qmd"
+format = "titlepage-pdf"
+description = "A full-bleed cover page, followed by a background-image title page."
+
+[titlepage-formal]
+title = "Title Pages: Formal"
+repo = "nmfs-opensci/quarto_titlepages"
+file = "example_2.qmd"
+format = "titlepage-pdf"
+options = { titlepage = "formal", coverpage = "none" }
+preview-page = 2  # page 1 is the copyright page
+
+[titlepage-vline]
+title = "Title Pages: Vertical Line"
+repo = "nmfs-opensci/quarto_titlepages"
+file = "example_2.qmd"
+format = "titlepage-pdf"
+options = { titlepage = "vline", coverpage = "none" }
+preview-page = 2  # page 1 is the copyright page
+
+[titlepage-colorbox]
+title = "Title Pages: Color Box"
+repo = "nmfs-opensci/quarto_titlepages"
+file = "example_2.qmd"
+format = "titlepage-pdf"
+options = { titlepage = "colorbox", coverpage = "none" }
+preview-page = 2  # page 1 is the copyright page
+
+[titlepage-academic]
+title = "Title Pages: Academic"
+repo = "nmfs-opensci/quarto_titlepages"
+file = "example_2.qmd"
+format = "titlepage-pdf"
+options = { titlepage = "academic", coverpage = "none" }
+preview-page = 2  # page 1 is the copyright page
+
+# --- danilofreire/quarto-templates ------------------------------------------
+
+[freire-article]
+title = "Academic Article"
+repo = "danilofreire/quarto-templates"
+file = "article/article.qmd"
+format = "pdf"
+description = "Double-spaced article with Libertine type, abstract, keywords and JEL codes."
+
+[freire-title-page]
+title = "Article with Title Page"
+repo = "danilofreire/quarto-templates"
+file = "title-page/title-page.qmd"
+format = "pdf"
+
+[freire-cv]
+title = "Curriculum Vitae"
+repo = "danilofreire/quarto-templates"
+file = "cv/cv.qmd"
+format = "pdf"
+
+[freire-letter]
+title = "Formal Letter"
+repo = "danilofreire/quarto-templates"
+file = "letter/letter.qmd"
+format = "pdf"
+# the template points at a signature image that only exists on its author's machine
+options = { signature = false }
+
+[freire-syllabus]
+title = "Course Syllabus"
+repo = "danilofreire/quarto-templates"
+file = "syllabus/syllabus.qmd"
+format = "pdf"

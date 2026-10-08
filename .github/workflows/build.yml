@@ -1,0 +1,72 @@
+name: Build gallery
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      force:
+        description: Re-render every template, ignoring the cache
+        type: boolean
+        default: false
+  schedule:
+    # weekly, to pick up changes in the template repos (unchanged ones stay cached)
+    - cron: "17 4 * * 1"
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: quarto-dev/quarto-actions/setup@v2
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt
+
+      # Rendered outputs, keyed per template inside .cache/renders/<id>/.
+      # Always restore the newest cache; build.py decides what is still valid.
+      - name: Restore render cache
+        uses: actions/cache@v4
+        with:
+          path: .cache
+          key: renders-${{ github.run_id }}
+          restore-keys: renders-
+
+      # TinyTeX is only installed (by build.py) when a LaTeX render is needed;
+      # HTML thumbnails use the runner's preinstalled Chrome.
+      - name: Render templates and build site
+        run: python build.py ${{ inputs.force && '--force' || '' }}
+        env:
+          # avoids GitHub API rate limits when Quarto downloads TinyTeX
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
