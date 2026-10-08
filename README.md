@@ -52,7 +52,8 @@ Chrome). TinyTeX is installed on first use if no LaTeX is found.
 Renders are cached in `.cache/renders/<id>/`. An entry is only re-rendered
 when its config, the upstream commit (checked with `git ls-remote`), the sample
 documents in `samples/` or the Quarto version change. A failed render keeps the
-previous output, and the build lists failures in its summary.
+previous output, and the build lists failures in its summary. A render whose
+thumbnail failed is kept, and only the thumbnail is retried on the next build.
 
 The [GitHub Action](.github/workflows/build.yml) runs the build on every push,
 weekly (to pick up upstream changes) and on demand, keeps `.cache/` between

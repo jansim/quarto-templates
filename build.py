@@ -305,6 +305,8 @@ def render_entry(entry: dict, rev: str | None, dest: Path) -> list[dict]:
 
 
 def pdf_thumb(pdf: Path, out: Path, page: int) -> None:
+    if not shutil.which("pdftoppm"):
+        raise RuntimeError("pdftoppm not found; install poppler-utils (apt) or poppler (brew)")
     stem = out.with_suffix("")
     run(["pdftoppm", "-f", str(page), "-l", str(page), "-singlefile",
          "-jpeg", "-jpegopt", "quality=82", "-scale-to-x", str(THUMB_WIDTH), "-scale-to-y", "-1",
@@ -444,8 +446,14 @@ def build_entry(entry: dict, args, browser: Browser) -> dict | None:
 
     selected = not args.only or entry["id"] in args.only
     if old and old.get("key") == key and not (args.force and selected):
-        log(f"= {entry['id']} (cached)")
-        return old
+        if all(out.get("thumb") for out in old["outputs"]):
+            log(f"= {entry['id']} (cached)")
+            return old
+        # Rendered fine earlier, but a thumbnail is missing: make just that.
+        log(f"= {entry['id']} (cached, retrying thumbnails)")
+        errors = make_thumbs(entry, old["outputs"], store, browser)
+        manifest_path.write_text(json.dumps(old, indent=2))
+        return {**old, "error": "; ".join(errors)} if errors else old
     if not selected:
         if old:
             log(f"~ {entry['id']} (stale, not selected)")
@@ -458,17 +466,7 @@ def build_entry(entry: dict, args, browser: Browser) -> dict | None:
     staging.mkdir(parents=True)
     try:
         outputs = render_entry(entry, rev, staging)
-        for out in outputs:
-            thumb = Path(out["file"]).with_suffix(".jpg").name
-            try:
-                if out["output"] == "pdf":
-                    pdf_thumb(staging / out["file"], staging / thumb, entry["preview_page"])
-                else:
-                    html_thumb(browser, staging / out["file"], staging / thumb, entry["kind"] == "slides")
-                out["thumb"] = thumb
-                out["w"], out["h"] = image_size(staging / thumb)
-            except Exception as exc:
-                log(f"  ! thumbnail failed: {exc}")
+        thumb_errors = make_thumbs(entry, outputs, staging, browser)
     except Exception as exc:
         log(f"! {entry['id']} failed after {time.time() - started:.0f}s:\n{exc}")
         if old:
@@ -488,7 +486,27 @@ def build_entry(entry: dict, args, browser: Browser) -> dict | None:
     store.parent.mkdir(parents=True, exist_ok=True)
     staging.rename(store)
     log(f"  done in {time.time() - started:.0f}s")
-    return manifest
+    return {**manifest, "error": "; ".join(thumb_errors)} if thumb_errors else manifest
+
+
+def make_thumbs(entry: dict, outputs: list[dict], folder: Path, browser: Browser) -> list[str]:
+    """Add a thumbnail to each output that lacks one; return error messages."""
+    errors = []
+    for out in outputs:
+        if out.get("thumb"):
+            continue
+        thumb = Path(out["file"]).with_suffix(".jpg").name
+        try:
+            if out["output"] == "pdf":
+                pdf_thumb(folder / out["file"], folder / thumb, entry["preview_page"])
+            else:
+                html_thumb(browser, folder / out["file"], folder / thumb, entry["kind"] == "slides")
+            out["thumb"] = thumb
+            out["w"], out["h"] = image_size(folder / thumb)
+        except Exception as exc:
+            log(f"  ! thumbnail for {out['format']} failed: {exc}")
+            errors.append(f"thumbnail for {out['format']}: {exc}")
+    return errors
 
 
 def write_site(records: list[dict], out_dir: Path) -> None:
