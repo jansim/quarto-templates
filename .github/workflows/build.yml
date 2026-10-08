@@ -36,8 +36,11 @@ jobs:
           python-version: "3.12"
           cache: pip
 
-      - name: Install Python dependencies
-        run: pip install -r requirements.txt
+      - name: Install dependencies
+        run: |
+          # pdftoppm, for PDF thumbnails
+          sudo apt-get update -qq && sudo apt-get install -y -qq poppler-utils
+          pip install -r requirements.txt
 
       # Rendered outputs, keyed per template inside .cache/renders/<id>/.
       # Always restore the newest cache; build.py decides what is still valid.
