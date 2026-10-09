@@ -26,6 +26,12 @@
 #                the preview and title don't already convey; keep notes on
 #                a template's look as comments instead.
 #   preview-page Page of the PDF to use as the thumbnail (default: 1).
+#   kind         "doc" or "slides", for formats whose base format suggests the
+#                wrong one (e.g. Typst slide decks).
+#   replace      Text replacements in the document, as [old, new] pairs, e.g.
+#                to swap a code chunk for one that needs fewer R packages
+#                (CI installs only knitr, rmarkdown and ggplot2). Trailing
+#                whitespace is ignored; a build fails if `old` isn't found.
 #
 # Kind (document or slides), output (PDF or HTML) and typesetting engine
 # (LaTeX, Typst or none) are inferred from the format name; the setup
@@ -164,3 +170,309 @@ title = "Course Syllabus"
 repo = "danilofreire/quarto-templates"
 file = "syllabus/syllabus.qmd"
 format = "pdf"
+
+# --- Reveal.js themes -------------------------------------------------------
+
+[clean-revealjs]
+# A minimalist, elegant theme with a quiet title slide and restrained colour accents.
+title = "Clean"
+repo = "grantmcdermott/quarto-revealjs-clean"
+format = "clean-revealjs"
+
+[coeos]
+# A dark grey title slide with a logo, a white rule and the full literal date.
+title = "Coeos"
+repo = "mcanouil/quarto-revealjs-coeos"
+format = "coeos-revealjs"
+
+[metropolis-revealjs]
+title = "Metropolis"
+repo = "shafayetShafee/metropolis-beamer"
+format = "metropolis-beamer-revealjs"
+description = "A Reveal.js port of the Metropolis Beamer theme."
+
+[rladies]
+# The R-Ladies purple palette and logo, for meetup and community talks.
+title = "R-Ladies"
+repo = "beatrizmilz/quarto-rladies-theme"
+format = "rladies-revealjs"
+# Uses mtcars instead of dplyr's starwars, and drops the slides that only
+# demo table packages (DT, gt, reactable), to avoid installing them.
+replace = [
+  ["library(dplyr)\n", ""],
+  ["g <- starwars", "g <- mtcars"],
+  ["geom_point(aes(x = height, y = mass))", "geom_point(aes(x = wt, y = mpg))"],
+  ['''tab <- starwars |>
+  tidyr::drop_na(species) |>
+  group_by(species) |>
+  summarise(
+    n = n(),
+    mean_heigth = round(mean(height, na.rm = TRUE)),
+    mean_mass = round(mean(mass, na.rm = TRUE))
+  ) |>
+  slice_max(order_by = n, n = 4)''', "tab <- head(mtcars[, 1:4], 4)"],
+  ['''## `DT::datatable()` {.smaller}
+
+With the `smaller` class in the slide!
+Ex: `## slide name {.smaller}`
+
+```{r}
+DT::datatable(tab, options = list(pageLength = 5))
+```
+
+## `gt::gt()`
+
+```{r}
+gt::gt(tab)
+```
+
+## `reactable::reactable()`
+
+```{r}
+reactable::reactable(tab)
+```
+
+''', ""],
+]
+
+[letterbox]
+title = "Letterbox"
+repo = "EmilHvitfeldt/quarto-revealjs-letterbox"
+format = "letterbox-revealjs"
+description = "Inspired by xaringan's letterbox style."
+
+[earth]
+# Watercolour textures in earthy greens and browns.
+title = "Earth"
+repo = "EmilHvitfeldt/quarto-revealjs-earth"
+format = "earth-revealjs"
+
+[nes]
+title = "NES"
+repo = "EmilHvitfeldt/quarto-nes-theme"
+format = "nes-revealjs"
+description = "Built on NES.css."
+# iris instead of palmerpenguins, and the plot without its Google font (showtext)
+replace = [['''library(palmerpenguins)
+library(showtext)
+library(ggplot2)
+font_add_google("Press Start 2P")
+showtext_auto()
+
+colors <- c("#76c442", "#f2c409", "#ce372b")
+
+ggplot(penguins) +
+  aes(bill_length_mm, bill_depth_mm,
+      color = species) +
+  geom_point() +
+  theme_minimal(base_family = "Press Start 2P") +''', '''library(ggplot2)
+
+colors <- c("#76c442", "#f2c409", "#ce372b")
+
+ggplot(iris) +
+  aes(Sepal.Length, Sepal.Width,
+      color = Species) +
+  geom_point() +
+  theme_minimal() +''']]
+
+[blackboard]
+# Chalk lettering on a dark green blackboard.
+title = "Blackboard"
+repo = "schochastics/quarto-blackboard-theme"
+format = "blackboard-revealjs"
+# the plot without its Google font (showtext)
+replace = [
+  ['''library(showtext)
+library(ggplot2)
+font_add_google("Pangolin", "Pangolin")
+showtext_auto()''', "library(ggplot2)"],
+  ['family = "Pangolin",', ""],
+  ["fig.showtext = TRUE,", ""],
+]
+
+# --- Typst slides -----------------------------------------------------------
+
+[clean-typst]
+title = "Clean (Typst)"
+repo = "kazuyanagimoto/quarto-clean-typst"
+format = "clean-typst"
+kind = "slides"
+description = "PDF slides built on Touying, the Typst slide package."
+
+# --- Academic articles -------------------------------------------------------
+
+[hikmah-pdf]
+# A clean, readable article layout for working papers and preprints.
+title = "Hikmah Article (LaTeX)"
+repo = "andrewheiss/hikmah-academic-quarto"
+format = "hikmah-pdf"
+
+[hikmah-typst]
+# The Hikmah article layout, typeset with Typst.
+title = "Hikmah Article (Typst)"
+repo = "andrewheiss/hikmah-academic-quarto"
+format = "hikmah-typst"
+
+[apaquarto-typst]
+# A manuscript in APA 7th edition style: title page, running head and APA references.
+title = "APA 7 (Typst)"
+repo = "wjschne/apaquarto"
+format = "apaquarto-typst"
+
+[apaquarto-pdf]
+# A manuscript in APA 7th edition style, typeset with LaTeX.
+title = "APA 7 (LaTeX)"
+repo = "wjschne/apaquarto"
+format = "apaquarto-pdf"
+
+[apaquarto-html]
+# A manuscript in APA 7th edition style, as a web page.
+title = "APA 7 (HTML)"
+repo = "wjschne/apaquarto"
+format = "apaquarto-html"
+
+[academic-typst]
+# A modern working-paper layout for economics and the social sciences.
+title = "Academic Manuscript"
+repo = "kazuyanagimoto/quarto-academic-typst"
+format = "academic-typst"
+# knitr::kable instead of tinytable
+replace = [['''nt <- "_Notes_: This table shows the first six rows of the mtcars dataset."
+mtcars[1:5, 1:5] |>
+  tinytable::tt(width = 0.8, notes = nt)''', "knitr::kable(mtcars[1:5, 1:5])"]]
+
+[preprint]
+# A preprint with author affiliations, abstract and keywords, typeset with Typst.
+title = "Preprint"
+repo = "mvuorre/quarto-preprint"
+format = "preprint-typst"
+
+[arxiv]
+# The look of the popular arxiv-style LaTeX template.
+title = "arXiv Preprint"
+repo = "mikemahoney218/quarto-arxiv"
+format = "arxiv-pdf"
+# knitr::kable instead of broom and kableExtra
+replace = [['''# install.packages("broom")
+# install.packages("kableExtra")
+data("quine", package = "MASS")
+m_pois <- glm(Days ~ (Eth + Sex + Age + Lrn)^2, data = quine, family = poisson)
+kableExtra::kable_styling(
+  kableExtra::kbl(broom::tidy(m_pois))
+)''', '''data("quine", package = "MASS")
+m_pois <- glm(Days ~ (Eth + Sex + Age + Lrn)^2, data = quine, family = poisson)
+knitr::kable(coef(summary(m_pois)), digits = 3)''']]
+
+[tufte-typst]
+# A Tufte-style handout with a wide margin for sidenotes and figures.
+title = "Tufte Handout"
+repo = "christopherkenny/tufte"
+format = "tufte-typst"
+
+[ams]
+# An article in the style of the American Mathematical Society.
+title = "AMS Article"
+repo = "quarto-ext/typst-templates"
+file = "ams/template.qmd"
+format = "ams-typst"
+
+[ieee]
+# A two-column conference paper in IEEE style.
+title = "IEEE Paper"
+repo = "quarto-ext/typst-templates"
+file = "ieee/template.qmd"
+format = "ieee-typst"
+
+# --- Journal formats ---------------------------------------------------------
+
+[elsevier]
+# A submission for Elsevier journals, using the elsarticle class.
+title = "Elsevier"
+repo = "quarto-journals/elsevier"
+format = "elsevier-pdf"
+
+[plos]
+# A submission for Public Library of Science journals.
+title = "PLOS"
+repo = "quarto-journals/plos"
+format = "plos-pdf"
+
+[jss]
+# An article for the Journal of Statistical Software.
+title = "Journal of Statistical Software"
+repo = "quarto-journals/jss"
+format = "jss-pdf"
+
+[jasa]
+# A submission for the journals of the American Statistical Association.
+title = "JASA"
+repo = "quarto-journals/jasa"
+format = "jasa-pdf"
+
+# --- Other documents --------------------------------------------------------
+
+[prettytypst]
+# A Typst document with a coloured sidebar, logo and modern sans-serif type.
+title = "PrettyTypst"
+repo = "nrennie/PrettyTypst"
+format = "PrettyTypst-typst"
+
+[sketchy]
+# A hand-drawn look for HTML documents, with handwritten type and sketched boxes.
+title = "Sketchy"
+repo = "schochastics/quarto-sketchy-html"
+format = "sketchy-html"
+
+[dept-news]
+# A two-column newsletter with a cover image and coloured sidebar.
+title = "Department Newsletter"
+repo = "quarto-ext/typst-templates"
+file = "dept-news/template.qmd"
+format = "dept-news-typst"
+
+[poster]
+# A large-format scientific poster.
+title = "Poster"
+repo = "quarto-ext/typst-templates"
+file = "poster/template.qmd"
+format = "poster-typst"
+
+[fiction]
+# A novel or short story, set as a printed book.
+title = "Fiction"
+repo = "quarto-ext/typst-templates"
+file = "fiction/template.qmd"
+format = "fiction-typst"
+
+# --- CVs, letters and invoices ----------------------------------------------
+
+[awesomecv]
+title = "Awesome CV"
+repo = "kazuyanagimoto/quarto-awesomecv-typst"
+format = "awesomecv-typst"
+description = "The Awesome-CV LaTeX design, reimplemented in Typst."
+
+[mps-cv]
+title = "Academic CV"
+repo = "mps9506/quarto-cv"
+format = "quarto-cv-pdf"
+description = "Publication lists are drawn from BibTeX files."
+
+[letter]
+# A formal letter with sender block, recipient address and signature.
+title = "Letter"
+repo = "mcanouil/quarto-letter"
+format = "letter-pdf"
+
+[letter-typst]
+# A simple business letter, typeset with Typst.
+title = "Letter (Typst)"
+repo = "quarto-ext/typst-templates"
+file = "letter/template.qmd"
+format = "letter-typst"
+
+[invoice]
+# An invoice with itemised services, VAT and payment details.
+title = "Invoice"
+repo = "mcanouil/quarto-invoice"
+format = "invoice-typst"
