@@ -336,52 +336,28 @@
   }
 
   // --- source view --------------------------------------------------------------
-  // Line numbers are drawn with CSS, so selecting text copies only the code.
-  // Clicking a line number selects that line, shift-clicking a range, for the copy button.
+  // The code is one plain <pre>, and the line numbers sit in a separate column drawn
+  // with CSS, so selecting text and copying gives exactly the source.
 
   function loadSource(box, t) {
-    box.innerHTML = '<div class="src-card"><div class="src-head"><span class="src-name">' + esc(t.source_name || 'source.qmd') + '</span></div>' +
-      '<div class="src-msg">Loading…</div></div>';
+    var head = '<div class="src-head"><span class="src-name">' + esc(t.source_name || 'source.qmd') + '</span>';
+    box.innerHTML = '<div class="src-card">' + head + '</div><div class="src-msg">Loading…</div></div>';
     fetch(t.source).then(function (r) {
       if (!r.ok) throw new Error(r.status);
       return r.text();
     }).then(function (text) {
       if (state.open !== t.id) return;
-      var html = window.highlightQmd(text);
-      var rows = html.map(function (line, i) {
-        return '<div class="src-row" data-n="' + (i + 1) + '"><span class="src-ln" data-line="' + (i + 1) + '" aria-hidden="true"></span>' +
-          '<span class="src-lc">' + line + '</span></div>';
-      }).join('');
-      box._lines = text.replace(/\r\n?/g, '\n').replace(/\n$/, '').split('\n');
-      box._sel = null;
-      box.innerHTML = '<div class="src-card"><div class="src-head"><span class="src-name">' + esc(t.source_name || 'source.qmd') + '</span>' +
-        '<span class="src-hint">Click line numbers to pick lines</span>' +
-        '<button type="button" class="src-copy" data-src-copy>' + ICON.copy + '<span>Copy all</span></button></div>' +
-        '<div class="src-code" tabindex="0" aria-label="Source of ' + esc(t.title) + '">' + rows + '</div></div>';
+      var lines = window.highlightQmd(text);
+      box._text = text;
+      box.innerHTML = '<div class="src-card">' + head +
+        '<button type="button" class="src-copy" data-src-copy>' + ICON.copy + '<span>Copy</span></button></div>' +
+        '<div class="src-code"><div class="src-gutter" aria-hidden="true">' +
+        lines.map(function (_, i) { return '<span data-n="' + (i + 1) + '"></span>'; }).join('') +
+        '</div><pre class="src-pre" tabindex="0" aria-label="Source of ' + esc(t.title) + '"><code>' + lines.join('\n') + '\n</code></pre></div></div>';
     }).catch(function () {
       if (state.open !== t.id) return;
       box.querySelector('.src-msg').textContent = 'The source could not be loaded.';
     });
-  }
-
-  function selectLines(box, n, extend) {
-    var sel = box._sel;
-    if (extend && sel) sel = { anchor: sel.anchor, a: Math.min(sel.anchor, n), b: Math.max(sel.anchor, n) };
-    else if (sel && sel.a === n && sel.b === n) sel = null;
-    else sel = { anchor: n, a: n, b: n };
-    box._sel = sel;
-    box.querySelectorAll('.src-row').forEach(function (row) {
-      var i = +row.getAttribute('data-n');
-      row.classList.toggle('is-sel', !!sel && i >= sel.a && i <= sel.b);
-    });
-    var label = box.querySelector('.src-copy span');
-    label.textContent = !sel ? 'Copy all' : sel.a === sel.b ? 'Copy line ' + sel.a : 'Copy lines ' + sel.a + '–' + sel.b;
-    resetCopy(box.querySelector('.src-copy'));
-  }
-
-  function resetCopy(btn) {
-    btn.classList.remove('done');
-    btn.querySelector('svg').outerHTML = ICON.copy;
   }
 
   function renderAside(t) {
@@ -489,7 +465,7 @@
       if (viewer !== v) return;
       // pdf.js unavailable (offline, blocked CDN): fall back to the browser's own viewer.
       if (window.console) console.warn(err);
-      box.outerHTML = '<div class="stage-fit"><div class="frame"><iframe src="' + esc(t.url) + '#view=FitH" title="' + esc(t.title) + ' (PDF)"></iframe>' +
+      box.outerHTML = '<div class="stage-fit pane-out"' + (box.hidden ? ' hidden' : '') + '><div class="frame"><iframe src="' + esc(t.url) + '#view=FitH" title="' + esc(t.title) + ' (PDF)"></iframe>' +
         '<a class="frame-img" href="' + esc(t.url) + '" target="_blank" rel="noopener" aria-label="Open the rendered PDF">' + preview(t) + '</a></div></div>';
     });
   }
@@ -553,23 +529,20 @@
   // --- events ---------------------------------------------------------------
 
   document.addEventListener('click', function (e) {
-    var el = e.target.closest('[data-open],[data-toggle],[data-quick],[data-close],[data-step],[data-copy],[data-tab],[data-line],[data-src-copy]');
+    var el = e.target.closest('[data-open],[data-toggle],[data-quick],[data-close],[data-step],[data-copy],[data-tab],[data-src-copy]');
     if (!el) return;
     if (el.hasAttribute('data-open')) return open(el.getAttribute('data-open'));
     if (el.hasAttribute('data-close')) return close();
     if (el.hasAttribute('data-tab')) { state.tab = el.getAttribute('data-tab'); applyTab(byId(state.open)); return syncHash(); }
-    if (el.hasAttribute('data-line')) {
-      e.preventDefault();
-      return selectLines(el.closest('.src-view'), +el.getAttribute('data-line'), e.shiftKey);
-    }
     if (el.hasAttribute('data-src-copy')) {
-      var box = el.closest('.src-view'), sel = box._sel;
-      var text = (sel ? box._lines.slice(sel.a - 1, sel.b) : box._lines).join('\n') + '\n';
-      copyText(text);
+      copyText(el.closest('.src-view')._text);
       el.classList.add('done');
-      el.querySelector('svg').outerHTML = ICON.check;
+      el.innerHTML = ICON.check + '<span>Copied</span>';
       clearTimeout(el._timer);
-      el._timer = setTimeout(function () { if (document.contains(el)) resetCopy(el); }, 1600);
+      el._timer = setTimeout(function () {
+        el.classList.remove('done');
+        el.innerHTML = ICON.copy + '<span>Copy</span>';
+      }, 1600);
       return;
     }
     if (el.hasAttribute('data-step')) return step(+el.getAttribute('data-step'));
@@ -602,11 +575,6 @@
     }
   });
 
-  // Shift-clicking line numbers picks a range; keep it from also selecting text.
-  document.addEventListener('mousedown', function (e) {
-    if (e.target.closest('[data-line]')) e.preventDefault();
-  });
-
   // Hovering a half pushes the diagonal toward its sibling.
   document.querySelectorAll('.split').forEach(function (split) {
     split.querySelectorAll('.half').forEach(function (half) {
@@ -634,7 +602,7 @@
       if ($('modal')._list.length > 1) { e.preventDefault(); step(e.key === 'ArrowLeft' ? -1 : 1); }
     } else if (e.key === 'Tab') {
       // keep focus inside the dialog
-      var f = Array.prototype.filter.call($('modal').querySelectorAll('.dialog a[href], .dialog button, .dialog iframe, .dialog .pdf-view, .dialog .src-code'), function (n) { return n.offsetParent !== null; });
+      var f = Array.prototype.filter.call($('modal').querySelectorAll('.dialog a[href], .dialog button, .dialog iframe, .dialog .pdf-view, .dialog .src-pre'), function (n) { return n.offsetParent !== null; });
       if (!f.length) return;
       var first = f[0], last = f[f.length - 1];
       if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
