@@ -21,6 +21,8 @@
 #                yield several entries.
 #   description  One sentence shown in the template's popup.
 #   preview-page Page of the PDF to use as the thumbnail (default: 1).
+#   kind         "doc" or "slides", for formats whose base format suggests the
+#                wrong one (e.g. Typst slide decks).
 #
 # Kind (document or slides), output (PDF or HTML) and typesetting engine
 # (LaTeX, Typst or none) are inferred from the format name; the setup
@@ -155,3 +157,226 @@ title = "Course Syllabus"
 repo = "danilofreire/quarto-templates"
 file = "syllabus/syllabus.qmd"
 format = "pdf"
+
+# --- Reveal.js themes -------------------------------------------------------
+
+[clean-revealjs]
+title = "Clean"
+repo = "grantmcdermott/quarto-revealjs-clean"
+format = "clean-revealjs"
+description = "A minimalist, elegant theme with a quiet title slide and restrained colour accents."
+
+[coeos]
+title = "Coeos"
+repo = "mcanouil/quarto-revealjs-coeos"
+format = "coeos-revealjs"
+description = "Bold section slides and a gradient title slide, with light and dark variants."
+
+[metropolis-revealjs]
+title = "Metropolis"
+repo = "shafayetShafee/metropolis-beamer"
+format = "metropolis-beamer-revealjs"
+description = "The Beamer Metropolis look, rebuilt for Reveal.js: dark frame titles and a progress bar."
+
+[rladies]
+title = "R-Ladies"
+repo = "beatrizmilz/quarto-rladies-theme"
+format = "rladies-revealjs"
+description = "The R-Ladies purple palette and logo, for meetup and community talks."
+
+[letterbox]
+title = "Letterbox"
+repo = "EmilHvitfeldt/quarto-revealjs-letterbox"
+format = "letterbox-revealjs"
+description = "Slides framed in a letterbox, with a colour band behind them, after the xaringan theme."
+
+[earth]
+title = "Earth"
+repo = "EmilHvitfeldt/quarto-revealjs-earth"
+format = "earth-revealjs"
+description = "Watercolour textures in earthy greens and browns."
+
+[nes]
+title = "NES"
+repo = "EmilHvitfeldt/quarto-nes-theme"
+format = "nes-revealjs"
+description = "8-bit pixel type and boxes, based on NES.css."
+
+[blackboard]
+title = "Blackboard"
+repo = "schochastics/quarto-blackboard-theme"
+format = "blackboard-revealjs"
+description = "Chalk lettering on a dark green blackboard."
+
+# --- Typst slides -----------------------------------------------------------
+
+[clean-typst]
+title = "Clean (Typst)"
+repo = "kazuyanagimoto/quarto-clean-typst"
+format = "clean-typst"
+kind = "slides"
+description = "A minimalist slide theme for PDF presentations, built on Touying."
+
+# --- Academic articles -------------------------------------------------------
+
+[hikmah-pdf]
+title = "Hikmah Article (LaTeX)"
+repo = "andrewheiss/hikmah-academic-quarto"
+format = "hikmah-pdf"
+description = "A clean, readable article layout for working papers and preprints."
+
+[hikmah-typst]
+title = "Hikmah Article (Typst)"
+repo = "andrewheiss/hikmah-academic-quarto"
+format = "hikmah-typst"
+description = "The Hikmah article layout, typeset with Typst."
+
+[apaquarto-typst]
+title = "APA 7 (Typst)"
+repo = "wjschne/apaquarto"
+format = "apaquarto-typst"
+description = "A manuscript in APA 7th edition style: title page, running head and APA references."
+
+[apaquarto-pdf]
+title = "APA 7 (LaTeX)"
+repo = "wjschne/apaquarto"
+format = "apaquarto-pdf"
+description = "A manuscript in APA 7th edition style, typeset with LaTeX."
+
+[apaquarto-html]
+title = "APA 7 (HTML)"
+repo = "wjschne/apaquarto"
+format = "apaquarto-html"
+description = "A manuscript in APA 7th edition style, as a web page."
+
+[academic-typst]
+title = "Academic Manuscript"
+repo = "kazuyanagimoto/quarto-academic-typst"
+format = "academic-typst"
+description = "A modern working-paper layout for economics and the social sciences."
+
+[preprint]
+title = "Preprint"
+repo = "mvuorre/quarto-preprint"
+format = "preprint-typst"
+description = "A preprint with author affiliations, abstract and keywords, typeset with Typst."
+
+[arxiv]
+title = "arXiv Preprint"
+repo = "mikemahoney218/quarto-arxiv"
+format = "arxiv-pdf"
+description = "The look of the popular arxiv-style LaTeX template."
+
+[tufte-typst]
+title = "Tufte Handout"
+repo = "christopherkenny/tufte"
+format = "tufte-typst"
+description = "A Tufte-style handout with a wide margin for sidenotes and figures."
+
+[ams]
+title = "AMS Article"
+repo = "quarto-ext/typst-templates"
+file = "ams/template.qmd"
+format = "ams-typst"
+description = "An article in the style of the American Mathematical Society."
+
+[ieee]
+title = "IEEE Paper"
+repo = "quarto-ext/typst-templates"
+file = "ieee/template.qmd"
+format = "ieee-typst"
+description = "A two-column conference paper in IEEE style."
+
+# --- Journal formats ---------------------------------------------------------
+
+[elsevier]
+title = "Elsevier"
+repo = "quarto-journals/elsevier"
+format = "elsevier-pdf"
+description = "A submission for Elsevier journals, using the elsarticle class."
+
+[plos]
+title = "PLOS"
+repo = "quarto-journals/plos"
+format = "plos-pdf"
+description = "A submission for Public Library of Science journals."
+
+[jss]
+title = "Journal of Statistical Software"
+repo = "quarto-journals/jss"
+format = "jss-pdf"
+description = "An article for the Journal of Statistical Software."
+
+[jasa]
+title = "JASA"
+repo = "quarto-journals/jasa"
+format = "jasa-pdf"
+description = "A submission for the journals of the American Statistical Association."
+
+# --- Other documents --------------------------------------------------------
+
+[prettytypst]
+title = "PrettyTypst"
+repo = "nrennie/PrettyTypst"
+format = "PrettyTypst-typst"
+description = "A Typst document with a coloured sidebar, logo and modern sans-serif type."
+
+[sketchy]
+title = "Sketchy"
+repo = "schochastics/quarto-sketchy-html"
+format = "sketchy-html"
+description = "A hand-drawn look for HTML documents, with handwritten type and sketched boxes."
+
+[dept-news]
+title = "Department Newsletter"
+repo = "quarto-ext/typst-templates"
+file = "dept-news/template.qmd"
+format = "dept-news-typst"
+description = "A two-column newsletter with a cover image and coloured sidebar."
+
+[poster]
+title = "Poster"
+repo = "quarto-ext/typst-templates"
+file = "poster/template.qmd"
+format = "poster-typst"
+description = "A large-format scientific poster."
+
+[fiction]
+title = "Fiction"
+repo = "quarto-ext/typst-templates"
+file = "fiction/template.qmd"
+format = "fiction-typst"
+description = "A novel or short story, set as a printed book."
+
+# --- CVs, letters and invoices ----------------------------------------------
+
+[awesomecv]
+title = "Awesome CV"
+repo = "kazuyanagimoto/quarto-awesomecv-typst"
+format = "awesomecv-typst"
+description = "The Awesome-CV LaTeX design, reimplemented in Typst."
+
+[mps-cv]
+title = "Academic CV"
+repo = "mps9506/quarto-cv"
+format = "quarto-cv-pdf"
+description = "A classic academic CV with publication lists drawn from BibTeX files."
+
+[letter]
+title = "Letter"
+repo = "mcanouil/quarto-letter"
+format = "letter-pdf"
+description = "A formal letter with sender block, recipient address and signature."
+
+[letter-typst]
+title = "Letter (Typst)"
+repo = "quarto-ext/typst-templates"
+file = "letter/template.qmd"
+format = "letter-typst"
+description = "A simple business letter, typeset with Typst."
+
+[invoice]
+title = "Invoice"
+repo = "mcanouil/quarto-invoice"
+format = "invoice-typst"
+description = "An invoice with itemised services, VAT and payment details."

@@ -100,7 +100,9 @@ def load_config() -> list[dict]:
                 raise ValueError(f"[{tid}]: missing required key {key!r}")
         if not isinstance(e["format"], str):
             raise ValueError(f"[{tid}]: format must be a single format; add one entry per format")
-        kind = BASE_FORMATS[base_of(e["format"])][0]
+        kind = e.get("kind", BASE_FORMATS[base_of(e["format"])][0])
+        if kind not in ("doc", "slides"):
+            raise ValueError(f"[{tid}]: kind must be 'doc' or 'slides'")
         repo = e.get("repo")
         if repo and not re.fullmatch(r"[\w.-]+/[\w.-]+", repo):
             raise ValueError(f"[{tid}]: repo must look like 'owner/name'")
@@ -166,7 +168,11 @@ def checkout(repo: str, ref: str | None, rev: str) -> Path:
 
 
 def apply_quartoignore(workdir: Path) -> None:
-    """Drop files `quarto use template` would not copy (see .quartoignore)."""
+    """Drop files `quarto use template` would not copy (see .quartoignore).
+
+    The extension is installed separately and never filtered, so _extensions/
+    is left alone.
+    """
     ignore = workdir / ".quartoignore"
     if not ignore.exists():
         return
@@ -175,6 +181,8 @@ def apply_quartoignore(workdir: Path) -> None:
         pattern = pattern.strip("/")
         for path in list(workdir.rglob("*")):
             rel = path.relative_to(workdir).as_posix()
+            if rel.split("/")[0] == "_extensions":
+                continue
             if fnmatch.fnmatch(rel, pattern) or ("/" not in pattern and fnmatch.fnmatch(path.name, pattern)):
                 if path.is_dir():
                     shutil.rmtree(path, ignore_errors=True)

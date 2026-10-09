@@ -50,7 +50,9 @@ python -m http.server -d _site
 
 Requires Quarto, `pdftoppm` (poppler) for PDF thumbnails and a Chromium for
 HTML thumbnails (`python -m playwright install chromium`, or an installed
-Chrome). TinyTeX is installed on first use if no LaTeX is found.
+Chrome). TinyTeX is installed on first use if no LaTeX is found. Templates with
+R code chunks need R with the packages listed in the
+[workflow](.github/workflows/build.yml) (knitr, rmarkdown, ggplot2, …).
 
 Renders are cached in `.cache/renders/<id>/`. An entry is only re-rendered
 when its config, the upstream commit (checked with `git ls-remote`), the sample
