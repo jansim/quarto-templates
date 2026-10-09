@@ -19,6 +19,9 @@
 #   options      Format options merged into the document's front matter,
 #                e.g. options = { titlepage = "formal" }, so one repo can
 #                yield several entries.
+#   remove-options  Format options to drop from the document's front matter,
+#                as a list of keys ("a.b" for nested ones), e.g. a theme's
+#                settings that don't suit the variant set in `options`.
 #   description  One sentence shown in the template's popup.
 #   preview-page Page of the PDF to use as the thumbnail (default: 1).
 #
@@ -95,6 +98,7 @@ repo = "nmfs-opensci/quarto_titlepages"
 file = "example_2.qmd"
 format = "titlepage-pdf"
 options = { titlepage = "formal", coverpage = "none" }
+remove-options = ["titlepage-bg-image"]  # the bg-image theme's corner graphic
 preview-page = 2  # page 1 is the copyright page
 
 [titlepage-vline]
@@ -103,6 +107,7 @@ repo = "nmfs-opensci/quarto_titlepages"
 file = "example_2.qmd"
 format = "titlepage-pdf"
 options = { titlepage = "vline", coverpage = "none" }
+remove-options = ["titlepage-bg-image"]  # the bg-image theme's corner graphic
 preview-page = 2  # page 1 is the copyright page
 
 [titlepage-colorbox]
@@ -111,6 +116,7 @@ repo = "nmfs-opensci/quarto_titlepages"
 file = "example_2.qmd"
 format = "titlepage-pdf"
 options = { titlepage = "colorbox", coverpage = "none" }
+remove-options = ["titlepage-bg-image"]  # the bg-image theme's corner graphic
 preview-page = 2  # page 1 is the copyright page
 
 [titlepage-academic]
@@ -119,6 +125,7 @@ repo = "nmfs-opensci/quarto_titlepages"
 file = "example_2.qmd"
 format = "titlepage-pdf"
 options = { titlepage = "academic", coverpage = "none" }
+remove-options = ["titlepage-bg-image"]  # the bg-image theme's corner graphic
 preview-page = 2  # page 1 is the copyright page
 
 # --- danilofreire/quarto-templates ------------------------------------------
