@@ -6,8 +6,9 @@ the commands to use it.
 
 ## Adding a template
 
-Add a table to [`templates.toml`](templates.toml). Most entries need three or
-four lines:
+To suggest a template, [open an issue](https://github.com/jansim/quarto-templates/issues/new?template=add-template.yml);
+its form asks for the entry described here. To add one yourself, add a table
+to [`templates.toml`](templates.toml). Most entries need three or four lines:
 
 ```toml
 [riso]                                   # id, used in URLs

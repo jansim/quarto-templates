@@ -20,6 +20,7 @@
     outs: { pdf: true, html: true },
     query: '',
     open: null,     // id of the template shown in the dialog
+    tab: 'output',  // what the dialog's stage shows: 'output' | 'source'
     seed: Math.floor(Math.random() * 9973)
   };
   var lastFocus = null;
@@ -32,6 +33,20 @@
     });
   }
   function $(id) { return document.getElementById(id); }
+  function copyText(text) {
+    if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(text).catch(function () {});
+    // e.g. served over plain http: copy through a temporary selection
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    ta.setAttribute('readonly', '');
+    ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0';
+    var focused = document.activeElement;
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); } catch (e) { /* nothing more to try */ }
+    ta.remove();
+    if (focused) focused.focus();
+  }
   function byId(id) { return TEMPLATES.filter(function (t) { return t.id === id; })[0]; }
   function shapeOf(t) { return t.kind === 'slides' ? 'slide' : (t.output === 'pdf' ? 'page' : 'web'); }
   // "PDF · Typst", "PDF · LaTeX" or "HTML": what the template renders to, and with what.
@@ -271,16 +286,22 @@
     h += '<section class="stage dots" aria-label="Rendered output" style="background-color:' + TINT[t.output] + '">';
     h += '<div class="stage-top"><span class="outchip">' + ICON[t.output].replace('currentColor', pdf ? '#E8505B' : '#3B7BF6') +
       esc(outLabel(t)) + '</span>';
+    if (t.source) {
+      h += '<div class="tabs" role="group" aria-label="Show">' + [['output', 'Output'], ['source', 'Source']].map(function (b) {
+        return '<button type="button" data-tab="' + b[0] + '" aria-pressed="false">' + b[1] + '</button>';
+      }).join('') + '</div>';
+    }
     h += '<a class="btn-small pop" href="' + esc(t.url) + '" target="_blank" rel="noopener">Open in new tab' + ICON.external + '</a></div>';
     h += '<div class="stage-body' + (pdf ? ' is-pdf' : '') + '">';
     if (pdf) {
-      h += '<div class="pdf-view" tabindex="0" aria-label="' + esc(t.title) + ' (PDF)"></div>';
+      h += '<div class="pdf-view pane-out" tabindex="0" aria-label="' + esc(t.title) + ' (PDF)"></div>';
     } else {
-      h += '<div class="stage-fit"><div class="frame' + (shape === 'slide' ? ' is-slide' : '') + '">';
+      h += '<div class="stage-fit pane-out"><div class="frame' + (shape === 'slide' ? ' is-slide' : '') + '">';
       h += '<iframe src="' + esc(t.url) + '" title="' + esc(t.title) + ' (HTML)" loading="lazy"></iframe>';
       h += '<a class="frame-img" href="' + esc(t.url) + '" target="_blank" rel="noopener" aria-label="Open the rendered HTML">' + preview(t) + '</a>';
       h += '</div></div>';
     }
+    if (t.source) h += '<div class="src-view" hidden></div>';
     if (list.length > 1) {
       h += '<button type="button" class="nav nav-prev pop" data-step="-1" aria-label="Previous template"><svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 3L5 8l5 5"/></svg></button>';
       h += '<button type="button" class="nav nav-next pop" data-step="1" aria-label="Next template"><svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3l5 5-5 5"/></svg></button>';
@@ -297,6 +318,70 @@
     document.body.classList.add('modal-open');
     renderAside(t);
     if (pdf) openPdf(modal.querySelector('.pdf-view'), t);
+    applyTab(t);
+  }
+
+  // Switch the stage between the rendered output and its source, keeping both alive.
+  function applyTab(t) {
+    var modal = $('modal'), src = modal.querySelector('.src-view');
+    var showSrc = state.tab === 'source' && !!src;
+    modal.querySelector('.pane-out').hidden = showSrc;
+    modal.querySelector('.stage-body').classList.toggle('is-src', showSrc);
+    modal.querySelectorAll('[data-tab]').forEach(function (b) {
+      b.setAttribute('aria-pressed', b.getAttribute('data-tab') === (showSrc ? 'source' : 'output') ? 'true' : 'false');
+    });
+    if (!src) return;
+    src.hidden = !showSrc;
+    if (showSrc && !src.firstChild) loadSource(src, t);
+  }
+
+  // --- source view --------------------------------------------------------------
+  // Line numbers are drawn with CSS, so selecting text copies only the code.
+  // Clicking a line number selects that line, shift-clicking a range, for the copy button.
+
+  function loadSource(box, t) {
+    box.innerHTML = '<div class="src-card"><div class="src-head"><span class="src-name">' + esc(t.source_name || 'source.qmd') + '</span></div>' +
+      '<div class="src-msg">Loading…</div></div>';
+    fetch(t.source).then(function (r) {
+      if (!r.ok) throw new Error(r.status);
+      return r.text();
+    }).then(function (text) {
+      if (state.open !== t.id) return;
+      var html = window.highlightQmd(text);
+      var rows = html.map(function (line, i) {
+        return '<div class="src-row" data-n="' + (i + 1) + '"><span class="src-ln" data-line="' + (i + 1) + '" aria-hidden="true"></span>' +
+          '<span class="src-lc">' + line + '</span></div>';
+      }).join('');
+      box._lines = text.replace(/\r\n?/g, '\n').replace(/\n$/, '').split('\n');
+      box._sel = null;
+      box.innerHTML = '<div class="src-card"><div class="src-head"><span class="src-name">' + esc(t.source_name || 'source.qmd') + '</span>' +
+        '<span class="src-hint">Click line numbers to pick lines</span>' +
+        '<button type="button" class="src-copy" data-src-copy>' + ICON.copy + '<span>Copy all</span></button></div>' +
+        '<div class="src-code" tabindex="0" aria-label="Source of ' + esc(t.title) + '">' + rows + '</div></div>';
+    }).catch(function () {
+      if (state.open !== t.id) return;
+      box.querySelector('.src-msg').textContent = 'The source could not be loaded.';
+    });
+  }
+
+  function selectLines(box, n, extend) {
+    var sel = box._sel;
+    if (extend && sel) sel = { anchor: sel.anchor, a: Math.min(sel.anchor, n), b: Math.max(sel.anchor, n) };
+    else if (sel && sel.a === n && sel.b === n) sel = null;
+    else sel = { anchor: n, a: n, b: n };
+    box._sel = sel;
+    box.querySelectorAll('.src-row').forEach(function (row) {
+      var i = +row.getAttribute('data-n');
+      row.classList.toggle('is-sel', !!sel && i >= sel.a && i <= sel.b);
+    });
+    var label = box.querySelector('.src-copy span');
+    label.textContent = !sel ? 'Copy all' : sel.a === sel.b ? 'Copy line ' + sel.a : 'Copy lines ' + sel.a + '–' + sel.b;
+    resetCopy(box.querySelector('.src-copy'));
+  }
+
+  function resetCopy(btn) {
+    btn.classList.remove('done');
+    btn.querySelector('svg').outerHTML = ICON.copy;
   }
 
   function renderAside(t) {
@@ -425,9 +510,10 @@
     }).catch(function () { el._drawn = false; });
   }
 
-  function open(id) {
+  function open(id, tab) {
     if (!state.open) lastFocus = document.activeElement;
     state.open = id;
+    state.tab = tab === 'source' ? 'source' : 'output';
     renderDialog();
     syncHash();
     var close = document.querySelector('#modal .close');
@@ -449,29 +535,47 @@
     if (btn) btn.focus();
   }
 
-  // Deep links: #<id>
+  // Deep links: #<id>, or #<id>/source for the source view
   function syncHash() {
-    var h = state.open ? '#' + state.open : ' ';
+    var h = state.open ? '#' + state.open + (state.tab === 'source' && byId(state.open).source ? '/source' : '') : ' ';
     if (location.hash !== h) history.replaceState(null, '', h === ' ' ? location.pathname + location.search : h);
   }
   function fromHash() {
-    // older links may carry a format: #<id>/<format>
-    var id = decodeURIComponent(location.hash.slice(1)).split('/')[0];
-    if (id && byId(id)) open(id);
+    // (older links may carry a format instead: #<id>/<format>)
+    var parts = decodeURIComponent(location.hash.slice(1)).split('/');
+    if (parts[0] && byId(parts[0])) {
+      if (parts[0] === state.open) { state.tab = parts[1] === 'source' ? 'source' : 'output'; applyTab(byId(state.open)); }
+      else open(parts[0], parts[1]);
+    }
     else if (state.open) close();
   }
 
   // --- events ---------------------------------------------------------------
 
   document.addEventListener('click', function (e) {
-    var el = e.target.closest('[data-open],[data-toggle],[data-quick],[data-close],[data-step],[data-copy]');
+    var el = e.target.closest('[data-open],[data-toggle],[data-quick],[data-close],[data-step],[data-copy],[data-tab],[data-line],[data-src-copy]');
     if (!el) return;
     if (el.hasAttribute('data-open')) return open(el.getAttribute('data-open'));
     if (el.hasAttribute('data-close')) return close();
+    if (el.hasAttribute('data-tab')) { state.tab = el.getAttribute('data-tab'); applyTab(byId(state.open)); return syncHash(); }
+    if (el.hasAttribute('data-line')) {
+      e.preventDefault();
+      return selectLines(el.closest('.src-view'), +el.getAttribute('data-line'), e.shiftKey);
+    }
+    if (el.hasAttribute('data-src-copy')) {
+      var box = el.closest('.src-view'), sel = box._sel;
+      var text = (sel ? box._lines.slice(sel.a - 1, sel.b) : box._lines).join('\n') + '\n';
+      copyText(text);
+      el.classList.add('done');
+      el.querySelector('svg').outerHTML = ICON.check;
+      clearTimeout(el._timer);
+      el._timer = setTimeout(function () { if (document.contains(el)) resetCopy(el); }, 1600);
+      return;
+    }
     if (el.hasAttribute('data-step')) return step(+el.getAttribute('data-step'));
     if (el.hasAttribute('data-copy')) {
       var cmd = $('modal')._cmds[+el.getAttribute('data-copy')];
-      if (navigator.clipboard) navigator.clipboard.writeText(cmd).catch(function () {});
+      copyText(cmd);
       document.querySelectorAll('#modal .copy.done').forEach(function (b) { b.classList.remove('done'); b.innerHTML = ICON.copy; });
       el.classList.add('done');
       el.innerHTML = ICON.check;
@@ -496,6 +600,11 @@
       }
       return renderList();
     }
+  });
+
+  // Shift-clicking line numbers picks a range; keep it from also selecting text.
+  document.addEventListener('mousedown', function (e) {
+    if (e.target.closest('[data-line]')) e.preventDefault();
   });
 
   // Hovering a half pushes the diagonal toward its sibling.
@@ -525,7 +634,7 @@
       if ($('modal')._list.length > 1) { e.preventDefault(); step(e.key === 'ArrowLeft' ? -1 : 1); }
     } else if (e.key === 'Tab') {
       // keep focus inside the dialog
-      var f = Array.prototype.filter.call($('modal').querySelectorAll('.dialog a[href], .dialog button, .dialog iframe, .dialog .pdf-view'), function (n) { return n.offsetParent !== null; });
+      var f = Array.prototype.filter.call($('modal').querySelectorAll('.dialog a[href], .dialog button, .dialog iframe, .dialog .pdf-view, .dialog .src-code'), function (n) { return n.offsetParent !== null; });
       if (!f.length) return;
       var first = f[0], last = f[f.length - 1];
       if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }

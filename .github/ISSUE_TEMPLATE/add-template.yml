@@ -1,0 +1,41 @@
+name: Add a template
+description: Suggest a Quarto template for the gallery.
+title: "Add template: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting a template! Fill in the entry below; it is pasted
+        into [`templates.toml`](https://github.com/jansim/quarto-templates/blob/main/templates.toml) as is, and the
+        gallery renders the template from its source on the next build.
+
+        - **`[my-template]`**: a short id for the entry (a-z, 0-9, `-`, `_`), used in URLs.
+        - **`title`**: the name shown in the gallery.
+        - **`repo`**: the GitHub repository, as `owner/name`.
+        - **`format`**: the Quarto format to render, e.g. `acm-pdf`, `typst`, `my-theme-revealjs`.
+          A template with several formats gets one entry per format.
+        - **`file`**: the document to render, relative to the repository root.
+          Leave it out if it is `template.qmd` (what `quarto use template` creates).
+        - **`description`** (optional): one sentence about the template.
+        - **`options`** (optional): format options merged into the document's front matter,
+          e.g. `options = { titlepage = "formal" }`.
+  - type: textarea
+    id: entry
+    attributes:
+      label: Gallery entry
+      description: Edit the values; delete the optional lines you don't need.
+      render: toml
+      value: |
+        [my-template]
+        title = "My Template"
+        repo = "owner/name"
+        format = "my-template-pdf"
+        file = "template.qmd"
+        description = "One sentence about what makes it special."
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: Anything else?
+      description: Optional. Rendering quirks, a page to use as the thumbnail (`preview-page`), a branch or tag (`ref`), …
