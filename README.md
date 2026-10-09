@@ -27,7 +27,11 @@ repo = "nmfs-opensci/quarto_titlepages"
 file = "example_2.qmd"
 format = "titlepage-pdf"
 options = { titlepage = "formal", coverpage = "none" }
+remove-options = ["titlepage-bg-image"]  # drop the document's own setting
 ```
+
+`remove-options` drops keys from the document's format options (use `"a.b"`
+for nested keys), for settings that only suit the document's original variant.
 
 Whether an entry is a document or slides, and whether it renders to PDF or
 HTML, is inferred from the format name. Setup instructions are derived too:

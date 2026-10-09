@@ -104,6 +104,9 @@ def load_config() -> list[dict]:
         repo = e.get("repo")
         if repo and not re.fullmatch(r"[\w.-]+/[\w.-]+", repo):
             raise ValueError(f"[{tid}]: repo must look like 'owner/name'")
+        remove = e.get("remove-options", [])
+        if not (isinstance(remove, list) and all(isinstance(k, str) for k in remove)):
+            raise ValueError(f"[{tid}]: remove-options must be a list of option names")
         builtin = repo is None
         kind = kinds.pop()
         if builtin:
@@ -118,6 +121,7 @@ def load_config() -> list[dict]:
             "ref": e.get("ref"),
             "file": file,
             "options": e.get("options") or {},
+            "remove_options": remove,
             "description": e.get("description", ""),
             "preview_page": int(e.get("preview-page", 1)),
             "builtin": builtin,
@@ -233,8 +237,18 @@ def declared_formats(doc: Path) -> list[str]:
     return [str(f) for f in formats] if isinstance(formats, (list, dict)) else []
 
 
-def with_options(src: Path, fmt: str, options: dict) -> Path:
-    """Copy of src with options merged into the front matter of format fmt."""
+def remove_option(options: dict, path: str) -> None:
+    """Delete a dotted key path (e.g. "titlepage-theme.vrule-color") if present."""
+    *parents, last = path.split(".")
+    for key in parents:
+        options = options.get(key)
+        if not isinstance(options, dict):
+            return
+    options.pop(last, None)
+
+
+def with_options(src: Path, fmt: str, options: dict, remove: list[str]) -> Path:
+    """Copy of src with options merged into, and the keys in remove dropped from, format fmt's front matter."""
     text = src.read_text(encoding="utf-8")
     m = FRONT_MATTER.match(text)
     meta = (yaml.safe_load(m.group(1)) if m else None) or {}
@@ -248,6 +262,8 @@ def with_options(src: Path, fmt: str, options: dict) -> Path:
         formats = {}
     current = formats.get(fmt)
     formats[fmt] = deep_merge(current if isinstance(current, dict) else {}, options)
+    for path in remove:
+        remove_option(formats[fmt], path)
     meta["format"] = formats
     dumped = yaml.safe_dump(meta, sort_keys=False, allow_unicode=True, width=1000)
     dest = src.with_name(f"gallery-{src.stem}.qmd")
@@ -282,7 +298,8 @@ def render_entry(entry: dict, rev: str | None, dest: Path) -> list[dict]:
             output = BASE_FORMATS[base][1]
             if base in NEEDS_LATEX:
                 ensure_latex()
-            src = with_options(doc, fmt, entry["options"]) if entry["options"] else doc
+            customized = entry["options"] or entry["remove_options"]
+            src = with_options(doc, fmt, entry["options"], entry["remove_options"]) if customized else doc
             out_name = f"{fmt}.{output}"
             cmd = ["quarto", "render", src.name, "--to", fmt, "--output", out_name]
             if output == "html":
@@ -296,7 +313,7 @@ def render_entry(entry: dict, rev: str | None, dest: Path) -> list[dict]:
             outputs.append({
                 "format": fmt, "output": output, "file": out_name,
                 # does the template already use this format as is?
-                "native": not entry["options"] and fmt in declared_formats(doc),
+                "native": not customized and fmt in declared_formats(doc),
             })
         return outputs
 
@@ -425,7 +442,7 @@ def samples_hash() -> str:
 def cache_key(entry: dict, rev: str | None) -> str:
     material = {
         "v": RENDER_VERSION,
-        "entry": {k: entry[k] for k in ("formats", "repo", "ref", "file", "options", "preview_page")},
+        "entry": {k: entry[k] for k in ("formats", "repo", "ref", "file", "options", "remove_options", "preview_page")},
         "rev": rev if not entry["builtin"] else samples_hash(),
         "quarto": quarto_version(),
     }
