@@ -28,6 +28,10 @@
 #   preview-page Page of the PDF to use as the thumbnail (default: 1).
 #   kind         "doc" or "slides", for formats whose base format suggests the
 #                wrong one (e.g. Typst slide decks).
+#   replace      Text replacements in the document, as [old, new] pairs, e.g.
+#                to swap a code chunk for one that needs fewer R packages
+#                (CI installs only knitr, rmarkdown and ggplot2). Trailing
+#                whitespace is ignored; a build fails if `old` isn't found.
 #
 # Kind (document or slides), output (PDF or HTML) and typesetting engine
 # (LaTeX, Typst or none) are inferred from the format name; the setup
@@ -192,6 +196,44 @@ description = "A Reveal.js port of the Metropolis Beamer theme."
 title = "R-Ladies"
 repo = "beatrizmilz/quarto-rladies-theme"
 format = "rladies-revealjs"
+# Uses mtcars instead of dplyr's starwars, and drops the slides that only
+# demo table packages (DT, gt, reactable), to avoid installing them.
+replace = [
+  ["library(dplyr)\n", ""],
+  ["g <- starwars", "g <- mtcars"],
+  ["geom_point(aes(x = height, y = mass))", "geom_point(aes(x = wt, y = mpg))"],
+  ['''tab <- starwars |>
+  tidyr::drop_na(species) |>
+  group_by(species) |>
+  summarise(
+    n = n(),
+    mean_heigth = round(mean(height, na.rm = TRUE)),
+    mean_mass = round(mean(mass, na.rm = TRUE))
+  ) |>
+  slice_max(order_by = n, n = 4)''', "tab <- head(mtcars[, 1:4], 4)"],
+  ['''## `DT::datatable()` {.smaller}
+
+With the `smaller` class in the slide!
+Ex: `## slide name {.smaller}`
+
+```{r}
+DT::datatable(tab, options = list(pageLength = 5))
+```
+
+## `gt::gt()`
+
+```{r}
+gt::gt(tab)
+```
+
+## `reactable::reactable()`
+
+```{r}
+reactable::reactable(tab)
+```
+
+''', ""],
+]
 
 [letterbox]
 title = "Letterbox"
@@ -210,12 +252,43 @@ title = "NES"
 repo = "EmilHvitfeldt/quarto-nes-theme"
 format = "nes-revealjs"
 description = "Built on NES.css."
+# iris instead of palmerpenguins, and the plot without its Google font (showtext)
+replace = [['''library(palmerpenguins)
+library(showtext)
+library(ggplot2)
+font_add_google("Press Start 2P")
+showtext_auto()
+
+colors <- c("#76c442", "#f2c409", "#ce372b")
+
+ggplot(penguins) +
+  aes(bill_length_mm, bill_depth_mm,
+      color = species) +
+  geom_point() +
+  theme_minimal(base_family = "Press Start 2P") +''', '''library(ggplot2)
+
+colors <- c("#76c442", "#f2c409", "#ce372b")
+
+ggplot(iris) +
+  aes(Sepal.Length, Sepal.Width,
+      color = Species) +
+  geom_point() +
+  theme_minimal() +''']]
 
 [blackboard]
 # Chalk lettering on a dark green blackboard.
 title = "Blackboard"
 repo = "schochastics/quarto-blackboard-theme"
 format = "blackboard-revealjs"
+# the plot without its Google font (showtext)
+replace = [
+  ['''library(showtext)
+library(ggplot2)
+font_add_google("Pangolin", "Pangolin")
+showtext_auto()''', "library(ggplot2)"],
+  ['family = "Pangolin",', ""],
+  ["fig.showtext = TRUE,", ""],
+]
 
 # --- Typst slides -----------------------------------------------------------
 
@@ -263,6 +336,10 @@ format = "apaquarto-html"
 title = "Academic Manuscript"
 repo = "kazuyanagimoto/quarto-academic-typst"
 format = "academic-typst"
+# knitr::kable instead of tinytable
+replace = [['''nt <- "_Notes_: This table shows the first six rows of the mtcars dataset."
+mtcars[1:5, 1:5] |>
+  tinytable::tt(width = 0.8, notes = nt)''', "knitr::kable(mtcars[1:5, 1:5])"]]
 
 [preprint]
 # A preprint with author affiliations, abstract and keywords, typeset with Typst.
@@ -275,6 +352,16 @@ format = "preprint-typst"
 title = "arXiv Preprint"
 repo = "mikemahoney218/quarto-arxiv"
 format = "arxiv-pdf"
+# knitr::kable instead of broom and kableExtra
+replace = [['''# install.packages("broom")
+# install.packages("kableExtra")
+data("quine", package = "MASS")
+m_pois <- glm(Days ~ (Eth + Sex + Age + Lrn)^2, data = quine, family = poisson)
+kableExtra::kable_styling(
+  kableExtra::kbl(broom::tidy(m_pois))
+)''', '''data("quine", package = "MASS")
+m_pois <- glm(Days ~ (Eth + Sex + Age + Lrn)^2, data = quine, family = poisson)
+knitr::kable(coef(summary(m_pois)), digits = 3)''']]
 
 [tufte-typst]
 # A Tufte-style handout with a wide margin for sidenotes and figures.

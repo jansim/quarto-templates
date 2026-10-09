@@ -109,6 +109,11 @@ def load_config() -> list[dict]:
         remove = e.get("remove-options", [])
         if not (isinstance(remove, list) and all(isinstance(k, str) for k in remove)):
             raise ValueError(f"[{tid}]: remove-options must be a list of option names")
+        replace = e.get("replace", [])
+        if not (isinstance(replace, list) and all(
+                isinstance(r, list) and len(r) == 2 and all(isinstance(x, str) for x in r) and r[0]
+                for r in replace)):
+            raise ValueError(f"[{tid}]: replace must be a list of [old, new] string pairs")
         builtin = repo is None
         if builtin:
             file = e.get("file") or ("slides.qmd" if kind == "slides" else "document.qmd")
@@ -123,6 +128,7 @@ def load_config() -> list[dict]:
             "file": file,
             "options": e.get("options") or {},
             "remove_options": remove,
+            "replace": replace,
             "description": e.get("description", ""),
             "preview_page": int(e.get("preview-page", 1)),
             "builtin": builtin,
@@ -281,6 +287,21 @@ def with_options(src: Path, fmt: str, options: dict, remove: list[str]) -> Path:
 SOURCE_NAME = "source.qmd"
 
 
+def apply_replacements(doc: Path, replace: list[list[str]]) -> None:
+    """Replace text in doc, e.g. to swap a code chunk for one with fewer dependencies.
+
+    Every occurrence is replaced; trailing whitespace on a line doesn't affect matching.
+    """
+    text = doc.read_text(encoding="utf-8")
+    for old, new in replace:
+        pattern = r"[ \t]*\n".join(re.escape(line.rstrip()) for line in old.split("\n"))
+        text, n = re.subn(pattern, lambda _: new, text)
+        if not n:
+            # upstream changed: fail rather than render something unintended
+            raise ValueError(f"replace: {old.splitlines()[0]!r}... not found in {doc.name}")
+    doc.write_text(text, encoding="utf-8")
+
+
 def prepare_source(entry: dict, rev: str | None, tmp: Path) -> Path:
     """Copy an entry's source into tmp; return the document to render, options applied."""
     workdir = tmp / "src"
@@ -298,6 +319,8 @@ def prepare_source(entry: dict, rev: str | None, tmp: Path) -> Path:
         doc = workdir / rel.name
     if not doc.exists():
         raise FileNotFoundError(f"{entry['file']} not found in source")
+    if entry["replace"]:
+        apply_replacements(doc, entry["replace"])
     if entry["options"] or entry["remove_options"]:
         return with_options(doc, entry["format"], entry["options"], entry["remove_options"])
     return doc
@@ -473,6 +496,7 @@ def cache_key(entry: dict, rev: str | None) -> str:
         "entry": {"formats": [entry["format"]], **{k: entry[k] for k in ("repo", "ref", "file", "options", "preview_page")}},
         # only when set, so entries without it keep their cache
         **({"remove_options": entry["remove_options"]} if entry["remove_options"] else {}),
+        **({"replace": entry["replace"]} if entry["replace"] else {}),
         "rev": rev if not entry["builtin"] else samples_hash(),
         "quarto": quarto_version(),
     }
