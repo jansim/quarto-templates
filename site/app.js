@@ -286,12 +286,13 @@
     h += '<section class="stage dots" aria-label="Rendered output" style="background-color:' + TINT[t.output] + '">';
     h += '<div class="stage-top"><span class="outchip">' + ICON[t.output].replace('currentColor', pdf ? '#E8505B' : '#3B7BF6') +
       esc(outLabel(t)) + '</span>';
+    h += '<a class="btn-small pop" href="' + esc(t.url) + '" target="_blank" rel="noopener">Open in new tab' + ICON.external + '</a>';
     if (t.source) {
       h += '<div class="tabs" role="group" aria-label="Show">' + [['output', 'Output'], ['source', 'Source']].map(function (b) {
         return '<button type="button" data-tab="' + b[0] + '" aria-pressed="false">' + b[1] + '</button>';
       }).join('') + '</div>';
     }
-    h += '<a class="btn-small pop" href="' + esc(t.url) + '" target="_blank" rel="noopener">Open in new tab' + ICON.external + '</a></div>';
+    h += '</div>';
     h += '<div class="stage-body' + (pdf ? ' is-pdf' : '') + '">';
     if (pdf) {
       h += '<div class="pdf-view pane-out" tabindex="0" aria-label="' + esc(t.title) + ' (PDF)"></div>';
