@@ -13,7 +13,7 @@ four lines:
 [riso]                                   # id, used in URLs
 title = "Riso Zine"
 repo = "jansim/quarto-revealjs-themes"   # leave out for built-in formats
-format = "riso-revealjs"                 # or a list: ["plos-pdf", "plos-html"]
+format = "riso-revealjs"                 # one per entry
 ```
 
 `file` (default `template.qmd`) picks the document to render, and `options`
@@ -29,8 +29,10 @@ format = "titlepage-pdf"
 options = { titlepage = "formal", coverpage = "none" }
 ```
 
-Whether an entry is a document or slides, and whether it renders to PDF or
-HTML, is inferred from the format name. Setup instructions are derived too:
+A template that supports several formats gets one entry per format.
+Whether an entry is a document or slides, whether it renders to PDF or HTML,
+and whether that PDF is typeset by LaTeX or Typst, is inferred from the format
+name. Setup instructions are derived too:
 templates at a repo's root get `quarto use template` / `quarto add`, templates
 in a subfolder get `git clone` + `quarto render`. See the comment at the top of
 `templates.toml` for all keys.

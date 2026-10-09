@@ -57,7 +57,8 @@ DOCS = {
     "revealjs": "https://quarto.org/docs/presentations/revealjs/",
     "beamer": "https://quarto.org/docs/presentations/beamer.html",
 }
-NEEDS_LATEX = {"pdf", "beamer"}
+# Base format -> the system that typesets it (None: HTML, no typesetting).
+ENGINES = {"pdf": "latex", "beamer": "latex", "typst": "typst"}
 RENDER_TIMEOUT = 20 * 60
 THUMB_WIDTH = 640
 
@@ -97,15 +98,13 @@ def load_config() -> list[dict]:
         for key in ("title", "format"):
             if key not in e:
                 raise ValueError(f"[{tid}]: missing required key {key!r}")
-        formats = e["format"] if isinstance(e["format"], list) else [e["format"]]
-        kinds = {BASE_FORMATS[base_of(f)][0] for f in formats}
-        if len(kinds) > 1:
-            raise ValueError(f"[{tid}]: mixes document and slide formats")
+        if not isinstance(e["format"], str):
+            raise ValueError(f"[{tid}]: format must be a single format; add one entry per format")
+        kind = BASE_FORMATS[base_of(e["format"])][0]
         repo = e.get("repo")
         if repo and not re.fullmatch(r"[\w.-]+/[\w.-]+", repo):
             raise ValueError(f"[{tid}]: repo must look like 'owner/name'")
         builtin = repo is None
-        kind = kinds.pop()
         if builtin:
             file = e.get("file") or ("slides.qmd" if kind == "slides" else "document.qmd")
         else:
@@ -113,7 +112,7 @@ def load_config() -> list[dict]:
         entries.append({
             "id": tid,
             "title": e["title"],
-            "formats": formats,
+            "format": e["format"],
             "repo": repo,
             "ref": e.get("ref"),
             "file": file,
@@ -256,7 +255,7 @@ def with_options(src: Path, fmt: str, options: dict) -> Path:
 
 
 def render_entry(entry: dict, rev: str | None, dest: Path) -> list[dict]:
-    """Render all formats of an entry into dest; return output records."""
+    """Render an entry into dest; return its output records (just the one)."""
     with tempfile.TemporaryDirectory(prefix=f"qt-{entry['id']}-") as tmp:
         tmp = Path(tmp)
         if entry["builtin"]:
@@ -276,29 +275,27 @@ def render_entry(entry: dict, rev: str | None, dest: Path) -> list[dict]:
         if not doc.exists():
             raise FileNotFoundError(f"{entry['file']} not found in source")
 
-        outputs = []
-        for fmt in entry["formats"]:
-            base = base_of(fmt)
-            output = BASE_FORMATS[base][1]
-            if base in NEEDS_LATEX:
-                ensure_latex()
-            src = with_options(doc, fmt, entry["options"]) if entry["options"] else doc
-            out_name = f"{fmt}.{output}"
-            cmd = ["quarto", "render", src.name, "--to", fmt, "--output", out_name]
-            if output == "html":
-                cmd += ["-M", "embed-resources:true"]
-            log(f"  quarto render {entry['file']} --to {fmt}")
-            run(cmd, cwd=src.parent, timeout=RENDER_TIMEOUT)
-            produced = [p for p in workdir.rglob(out_name) if p.is_file()]
-            if not produced:
-                raise FileNotFoundError(f"render finished but {out_name} was not produced")
-            shutil.copy2(produced[0], dest / out_name)
-            outputs.append({
-                "format": fmt, "output": output, "file": out_name,
-                # does the template already use this format as is?
-                "native": not entry["options"] and fmt in declared_formats(doc),
-            })
-        return outputs
+        fmt = entry["format"]
+        base = base_of(fmt)
+        output = BASE_FORMATS[base][1]
+        if ENGINES.get(base) == "latex":
+            ensure_latex()
+        src = with_options(doc, fmt, entry["options"]) if entry["options"] else doc
+        out_name = f"{fmt}.{output}"
+        cmd = ["quarto", "render", src.name, "--to", fmt, "--output", out_name]
+        if output == "html":
+            cmd += ["-M", "embed-resources:true"]
+        log(f"  quarto render {entry['file']} --to {fmt}")
+        run(cmd, cwd=src.parent, timeout=RENDER_TIMEOUT)
+        produced = [p for p in workdir.rglob(out_name) if p.is_file()]
+        if not produced:
+            raise FileNotFoundError(f"render finished but {out_name} was not produced")
+        shutil.copy2(produced[0], dest / out_name)
+        return [{
+            "format": fmt, "output": output, "file": out_name,
+            # does the template already use this format as is?
+            "native": not entry["options"] and fmt in declared_formats(doc),
+        }]
 
 
 # --- thumbnails -------------------------------------------------------------
@@ -367,10 +364,14 @@ def image_size(jpeg: Path) -> tuple[int, int]:
 # --- site data --------------------------------------------------------------
 
 
-def front_matter_snippet(fmt: str, options: dict) -> str:
-    if not options:
-        return f"format: {fmt}"
-    return yaml.safe_dump({"format": {fmt: options}}, sort_keys=False, allow_unicode=True).strip()
+def front_matter_snippet(entry: dict) -> str:
+    """A complete front matter block using the entry's format, ready to paste."""
+    fmt, options = entry["format"], entry["options"]
+    meta = {
+        "title": "My Slides" if entry["kind"] == "slides" else "My Document",
+        "format": {fmt: options} if options else fmt,
+    }
+    return "---\n" + yaml.safe_dump(meta, sort_keys=False, allow_unicode=True) + "---"
 
 
 def site_record(entry: dict, manifest: dict) -> dict:
@@ -381,11 +382,10 @@ def site_record(entry: dict, manifest: dict) -> dict:
         "description": entry["description"],
         "kind": entry["kind"],
         "builtin": entry["builtin"],
-        "outputs": [],
     }
     if entry["builtin"]:
-        rec["origin"] = "format: " + entry["formats"][0]
-        rec["src"] = DOCS[base_of(entry["formats"][0])]
+        rec["origin"] = "format: " + entry["format"]
+        rec["src"] = DOCS[base_of(entry["format"])]
         rec["setup"] = "builtin"
     else:
         sub = str(Path(file).parent)
@@ -394,17 +394,18 @@ def site_record(entry: dict, manifest: dict) -> dict:
         rec["repo"] = repo
         rec["file"] = file
         rec["setup"] = "extension" if sub == "." else "clone"
-    for out in manifest["outputs"]:
-        rec["outputs"].append({
-            "format": out["format"],
-            "output": out["output"],
-            "url": f"t/{entry['id']}/{out['file']}",
-            "thumb": f"t/{entry['id']}/{out['thumb']}" if out.get("thumb") else None,
-            "w": out.get("w"),
-            "h": out.get("h"),
-            "yaml": front_matter_snippet(out["format"], entry["options"]),
-            "native": out.get("native", False),
-        })
+    out = manifest["outputs"][0]
+    rec.update({
+        "format": out["format"],
+        "output": out["output"],
+        "engine": ENGINES.get(base_of(out["format"])),
+        "url": f"t/{entry['id']}/{out['file']}",
+        "thumb": f"t/{entry['id']}/{out['thumb']}" if out.get("thumb") else None,
+        "w": out.get("w"),
+        "h": out.get("h"),
+        "yaml": front_matter_snippet(entry),
+        "native": out.get("native", False),
+    })
     rec["rendered"] = manifest.get("rendered")
     rec["rev"] = manifest.get("rev")
     return rec
@@ -425,7 +426,8 @@ def samples_hash() -> str:
 def cache_key(entry: dict, rev: str | None) -> str:
     material = {
         "v": RENDER_VERSION,
-        "entry": {k: entry[k] for k in ("formats", "repo", "ref", "file", "options", "preview_page")},
+        # "formats" stays a list, as when entries could have several, so existing caches stay valid
+        "entry": {"formats": [entry["format"]], **{k: entry[k] for k in ("repo", "ref", "file", "options", "preview_page")}},
         "rev": rev if not entry["builtin"] else samples_hash(),
         "quarto": quarto_version(),
     }
@@ -516,10 +518,9 @@ def write_site(records: list[dict], out_dir: Path) -> None:
         src = CACHE / "renders" / rec["id"]
         dest = out_dir / "t" / rec["id"]
         dest.mkdir(parents=True, exist_ok=True)
-        for out in rec["outputs"]:
-            for rel in (out["url"], out["thumb"]):
-                if rel:
-                    shutil.copy2(src / Path(rel).name, dest / Path(rel).name)
+        for rel in (rec["url"], rec["thumb"]):
+            if rel:
+                shutil.copy2(src / Path(rel).name, dest / Path(rel).name)
     index = out_dir / "index.html"
     data = json.dumps({"templates": records, "quarto": quarto_version()}, ensure_ascii=False)
     data = data.replace("</", "<\\/")  # keep it inert inside <script>
