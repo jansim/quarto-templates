@@ -33,7 +33,7 @@ title = "HTML Document"
 format = "html"
 
 [pdf]
-title = "LaTeX Document"
+title = "PDF Document (LaTeX)"
 format = "pdf"
 
 [typst]
