@@ -6,14 +6,13 @@
   var ACCENTS = ['#E8505B', '#3B7BF6', '#11A37F', '#8B5CF6', '#F2A93B', '#EC4899', '#0EA5B7'];
   var STICKERS = ['#F2A93B', '#7FE0BF', '#FFB3B8', '#B9CFFF', '#F2A93B', '#7FE0BF'];
   var TINT = { doc: 'var(--doc-tint)', slides: 'var(--slides-tint)', pdf: 'var(--pdf-tint)', html: 'var(--html-tint)' };
-  var SLOTS = [
-    { l: 0, t: 4, w: 40, r: -7 }, { l: 34, t: 0, w: 44, r: 4 }, { l: 72, t: 8, w: 30, r: 8 },
-    { l: 4, t: 50, w: 42, r: 3 }, { l: 42, t: 42, w: 32, r: -6 }, { l: 66, t: 56, w: 36, r: -3 }
-  ];
+  var ENGINE = { latex: 'LaTeX', typst: 'Typst' };
+  var PDFJS = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/';
+  var COLLAGE_MAX = 6;
 
   TEMPLATES.forEach(function (t, i) {
     t.accent = ACCENTS[i % ACCENTS.length];
-    t.haystack = [t.title, t.origin, t.description || '', t.outputs.map(function (o) { return o.format; }).join(' ')].join(' ').toLowerCase();
+    t.haystack = [t.title, t.origin, t.description || '', t.format, ENGINE[t.engine] || ''].join(' ').toLowerCase();
   });
 
   var state = {
@@ -21,8 +20,7 @@
     outs: { pdf: true, html: true },
     query: '',
     open: null,     // id of the template shown in the dialog
-    view: null,     // format shown in the dialog
-    path: 'new',    // setup path for extensions: 'new' | 'add'
+    tab: 'output',  // what the dialog's stage shows: 'output' | 'source'
     seed: Math.floor(Math.random() * 9973)
   };
   var lastFocus = null;
@@ -35,9 +33,25 @@
     });
   }
   function $(id) { return document.getElementById(id); }
+  function copyText(text) {
+    if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(text).catch(function () {});
+    // e.g. served over plain http: copy through a temporary selection
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    ta.setAttribute('readonly', '');
+    ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0';
+    var focused = document.activeElement;
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); } catch (e) { /* nothing more to try */ }
+    ta.remove();
+    if (focused) focused.focus();
+  }
   function byId(id) { return TEMPLATES.filter(function (t) { return t.id === id; })[0]; }
-  function shapeOf(t, out) { return t.kind === 'slides' ? 'slide' : (out.output === 'pdf' ? 'page' : 'web'); }
-  function ext(out) { return out.output; }
+  function shapeOf(t) { return t.kind === 'slides' ? 'slide' : (t.output === 'pdf' ? 'page' : 'web'); }
+  // "PDF · Typst", "PDF · LaTeX" or "HTML": what the template renders to, and with what.
+  function outLabel(t) { return t.output.toUpperCase() + (t.engine ? ' · ' + ENGINE[t.engine] : ''); }
+  function reducedMotion() { return window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches; }
 
   var ICON = {
     doc: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 10h16M4 14h10M4 18h13"/></svg>',
@@ -58,19 +72,15 @@
     return '<span class="tag">' + (t.kind === 'doc' ? ICON.doc.replace('currentColor', '#11A37F') : ICON.slides.replace('currentColor', '#D68A12')) +
       (t.kind === 'doc' ? 'Document' : 'Slides') + '</span>';
   }
-  function outTag(o) { return '<span class="tag c-' + o + '">' + ICON[o] + o.toUpperCase() + '</span>'; }
-  function outputsOf(t) {
-    var seen = {};
-    return t.outputs.map(ext).filter(function (o) { return seen[o] ? false : (seen[o] = true); });
-  }
+  function outTag(t) { return '<span class="tag c-' + t.output + '">' + ICON[t.output] + outLabel(t) + '</span>'; }
 
   // A rendered thumbnail, or a drawn stand-in when the build had none.
-  function preview(t, out) {
-    var shape = shapeOf(t, out);
+  function preview(t) {
+    var shape = shapeOf(t);
     var bar = shape === 'web' ? '<div class="pv-bar"><i></i><i></i><i></i></div>' : '';
-    if (out.thumb) {
-      return '<div class="pv pv-' + shape + '">' + bar + '<img src="' + esc(out.thumb) + '" width="' + (out.w || 640) +
-        '" height="' + (out.h || 480) + '" alt="" loading="lazy" decoding="async"></div>';
+    if (t.thumb) {
+      return '<div class="pv pv-' + shape + '">' + bar + '<img src="' + esc(t.thumb) + '" width="' + (t.w || 640) +
+        '" height="' + (t.h || 480) + '" alt="" loading="lazy" decoding="async"></div>';
     }
     return '<div class="pv pv-' + shape + '">' + bar + mock(shape, t.accent) + '</div>';
   }
@@ -99,7 +109,7 @@
   }
   function visible() {
     return TEMPLATES.filter(function (t) {
-      return matchesQuery(t) && state.types[t.kind] && outputsOf(t).some(function (o) { return state.outs[o]; });
+      return matchesQuery(t) && state.types[t.kind] && state.outs[t.output];
     });
   }
   function allOn() { return state.types.doc && state.types.slides && state.outs.pdf && state.outs.html; }
@@ -113,24 +123,68 @@
 
   // --- hero -----------------------------------------------------------------
 
-  function renderCollage() {
+  // The collage: up to six templates, picked by the seed, laid out on a loose
+  // grid. Each tile is sized from its thumbnail's proportions so tall pages
+  // and wide slides get a similar footprint, whatever the draw.
+  function renderCollage(animate) {
     var s = state.seed;
     function rnd() { s = (s * 9301 + 49297) % 233280; return s / 233280; }
     var pool = TEMPLATES.slice();
     for (var i = pool.length - 1; i > 0; i--) {
       var j = Math.floor(rnd() * (i + 1)); var tmp = pool[i]; pool[i] = pool[j]; pool[j] = tmp;
     }
+    var picks = pool.slice(0, COLLAGE_MAX);
+    var order = picks.map(function (_, k) { return k; }).sort(function () { return rnd() - 0.5; });
+    var html = picks.map(function (t, k) {
+      var r = (k % 2 ? 1 : -1) * (2 + rnd() * 6);
+      return '<button type="button" class="tile' + (animate ? ' entering' : '') + '" data-open="' + esc(t.id) + '" aria-label="Open ' + esc(t.title) +
+        '" data-jx="' + (rnd() * 2 - 1).toFixed(3) + '" data-jy="' + (rnd() * 2 - 1).toFixed(3) +
+        '" style="--r:' + r.toFixed(1) + 'deg;--d:' + (k * 60) + 'ms;z-index:' + (order[k] + 1) + '">' +
+        '<div class="tile-frame">' + preview(t) + '</div>' +
+        '<span class="tile-sticker" style="background:' + STICKERS[k] + ';transform:rotate(' + (r > 0 ? -4 : 3) + 'deg)">' + esc(t.title) + '</span></button>';
+    }).join('');
     var box = $('collage');
     box.querySelectorAll('.tile').forEach(function (n) { n.remove(); });
-    var html = SLOTS.slice(0, pool.length).map(function (sl, k) {
-      var t = pool[k], out = t.outputs[0], shape = shapeOf(t, out);
-      var w = shape === 'page' ? Math.round(sl.w * 0.72) : sl.w;
-      return '<button type="button" class="tile" data-open="' + esc(t.id) + '" aria-label="Open ' + esc(t.title) + '" style="left:' + sl.l +
-        '%;top:' + sl.t + '%;width:' + w + '%;transform:rotate(' + sl.r + 'deg);z-index:' + (k + 1) + '">' +
-        '<div class="tile-frame">' + preview(t, out) + '</div>' +
-        '<span class="tile-sticker" style="background:' + STICKERS[k] + ';transform:rotate(' + (sl.r > 0 ? -4 : 3) + 'deg)">' + esc(t.title) + '</span></button>';
-    }).join('');
     box.insertAdjacentHTML('afterbegin', html);
+    layoutCollage();
+  }
+
+  function layoutCollage() {
+    var box = $('collage'), tiles = box.querySelectorAll('.tile');
+    var W = box.clientWidth, H = box.clientHeight - 16;  // room for the stickers below the bottom row
+    var n = tiles.length;
+    if (!n || !W) return;
+    var rows = n > 3 ? 2 : 1, cols = Math.ceil(n / rows);
+    var cw = W / cols, ch = H / rows, grow = 1.15;  // tiles may spill a little into their neighbours
+    var area = cw * ch * 0.64;  // every tile gets about the same area, whatever its shape
+    tiles.forEach(function (el, k) {
+      var t = byId(el.getAttribute('data-open'));
+      var shape = shapeOf(t);
+      var ratio = t.thumb && t.w ? t.h / t.w : { page: 1.414, slide: 0.5625, web: 0.75 }[shape];
+      var chrome = 8 + (shape === 'web' ? 14 : 0);  // frame border, browser bar
+      var w = Math.min(Math.sqrt(area / ratio), cw * grow, (ch * grow - chrome) / ratio + 8);
+      var h = (w - 8) * ratio + chrome;
+      var row = Math.floor(k / cols), col = k % cols;
+      var cx = (col + 0.5) * cw + (+el.getAttribute('data-jx')) * cw * 0.12 + (row ? cw * 0.1 : -cw * 0.04);
+      var cy = (row + 0.5) * ch + (+el.getAttribute('data-jy')) * ch * 0.1;
+      var left = Math.max(0, Math.min(W - w, cx - w / 2));
+      var top = Math.max(0, Math.min(H - h, cy - h / 2));
+      el.style.left = (left / W * 100) + '%';
+      el.style.top = top + 'px';
+      el.style.width = (w / W * 100) + '%';
+    });
+  }
+
+  function shuffle() {
+    state.seed = (state.seed * 31 + 17) % 9973;
+    var btn = $('shuffle');
+    if (reducedMotion()) return renderCollage(false);
+    btn.classList.remove('spin');
+    void btn.offsetWidth;  // restart the icon's spin
+    btn.classList.add('spin');
+    $('collage').querySelectorAll('.tile').forEach(function (n) { n.classList.remove('entering'); n.classList.add('leaving'); });
+    clearTimeout(shuffle.timer);
+    shuffle.timer = setTimeout(function () { renderCollage(true); }, 200);
   }
 
   function renderQuick() {
@@ -139,7 +193,7 @@
       var p = b.getAttribute('data-quick').split(':'), kind = p[0], fmt = p[1];
       var on = state.types[kind] && state.outs[fmt];
       var only = on && !state.types[kind === 'doc' ? 'slides' : 'doc'] && !state.outs[fmt === 'pdf' ? 'html' : 'pdf'];
-      var n = byQuery.filter(function (t) { return t.kind === kind && outputsOf(t).indexOf(fmt) > -1; }).length;
+      var n = byQuery.filter(function (t) { return t.kind === kind && t.output === fmt; }).length;
       b.classList.toggle('off', !on);
       b.setAttribute('aria-pressed', only ? 'true' : 'false');
       b.setAttribute('aria-label', (kind === 'doc' ? 'Documents' : 'Slides') + ' as ' + fmt.toUpperCase() + ', ' + n + (n === 1 ? ' template' : ' templates'));
@@ -149,16 +203,14 @@
   // --- grid -----------------------------------------------------------------
 
   function card(t, i) {
-    var outs = t.outputs, first = outs[0], shape = shapeOf(t, first);
-    var combo = outs.length > 1 && shapeOf(t, outs[1]) !== shape ? outs[1] : null;
+    var shape = shapeOf(t);
     var pw = shape === 'page' ? '64%' : (shape === 'web' ? '72%' : '78%');
     var ty = shape === 'page' ? '0%' : '8%';
     var rot = i % 2 ? 2.5 : -2.5;
     return '<button type="button" class="card" data-open="' + esc(t.id) + '" aria-haspopup="dialog">' +
       '<div class="card-thumb dots' + (shape === 'page' ? ' is-page' : '') + '" style="background-color:' + TINT[t.kind] + '">' +
-        '<div class="card-main" style="width:' + pw + ';transform:translate(' + (combo ? '-20%' : '0%') + ',' + ty + ') rotate(' + rot + 'deg)">' + preview(t, first) + '</div>' +
-        (combo ? '<div class="card-second">' + preview(t, combo) + '</div>' : '') +
-        '<div class="tags">' + kindTag(t) + outputsOf(t).map(outTag).join('') + '</div>' +
+        '<div class="card-main" style="width:' + pw + ';transform:translate(0%,' + ty + ') rotate(' + rot + 'deg)">' + preview(t) + '</div>' +
+        '<div class="tags">' + kindTag(t) + outTag(t) + '</div>' +
       '</div>' +
       '<div class="card-body"><span class="card-title">' + esc(t.title) + '</span>' +
         '<span class="origin">' + (t.builtin ? ICON.builtin : ICON.ext) + '<span>' + esc(t.origin) + '</span></span></div>' +
@@ -180,37 +232,40 @@
 
   // --- dialog ---------------------------------------------------------------
 
-  function steps(t, out) {
-    var fmt = out.format;
-    var yamlStep = { text: 'Set the format in your front matter', cmd: out.yaml, yaml: true };
+  // Setup instructions, as groups of steps (extensions get one per path).
+  function setupGroups(t) {
+    var yamlStep = { text: 'Set the front matter of your document', cmd: t.yaml, yaml: true };
     if (t.setup === 'builtin') {
-      return [yamlStep, { text: 'Render', cmd: 'quarto render document.qmd' }];
+      return [{ steps: [yamlStep, { text: 'Render', cmd: 'quarto render document.qmd' }] }];
     }
     if (t.setup === 'clone') {
       var name = t.repo.split('/')[1];
       var parts = t.file.split('/');
       var file = parts.pop();
-      return [
+      var s = [
         { text: 'Download the template', cmd: 'git clone https://github.com/' + t.repo + '.git' },
-        { text: 'Go to its folder', cmd: 'cd ' + [name].concat(parts).join('/') },
-        { text: 'Render it', cmd: 'quarto render ' + file + ' --to ' + fmt }
+        { text: 'Go to its folder', cmd: 'cd ' + [name].concat(parts).join('/') }
       ];
+      if (!t.native) s.push({ text: 'Set the front matter of ' + file, cmd: t.yaml, yaml: true });
+      s.push({ text: 'Render it', cmd: 'quarto render ' + file });
+      return [{ steps: s }];
     }
-    if (state.path === 'new') {
-      var s = [{ text: 'Create a project from the template', cmd: 'quarto use template ' + t.repo }];
-      if (!out.native) s.push({ text: 'Set the format in the new document', cmd: out.yaml, yaml: true });
-      s.push({ text: 'Preview it', cmd: 'quarto preview' });
-      return s;
-    }
+    var fresh = [{ text: 'Create a project from the template', cmd: 'quarto use template ' + t.repo }];
+    if (!t.native) fresh.push({ text: 'Set the front matter of the new document', cmd: t.yaml, yaml: true });
+    fresh.push({ text: 'Preview it', cmd: 'quarto preview' });
     return [
-      { text: 'Install the extension', cmd: 'quarto add ' + t.repo },
-      yamlStep,
-      { text: 'Render', cmd: 'quarto render document.qmd' }
+      { title: 'New project', steps: fresh },
+      { title: 'Existing project', steps: [
+        { text: 'Install the extension', cmd: 'quarto add ' + t.repo },
+        yamlStep,
+        { text: 'Render', cmd: 'quarto render document.qmd' }
+      ] }
     ];
   }
 
   function renderDialog() {
     var modal = $('modal');
+    closePdf();
     var t = byId(state.open);
     if (!t) {
       modal.hidden = true;
@@ -220,27 +275,34 @@
     }
     var list = visible().some(function (v) { return v.id === t.id; }) ? visible() : TEMPLATES;
     var idx = Math.max(0, list.indexOf(t));
-    var out = t.outputs.filter(function (o) { return o.format === state.view; })[0] ||
-      t.outputs.filter(function (o) { return state.outs[o.output]; })[0] || t.outputs[0];
-    var shape = shapeOf(t, out);
-    var url = out.url;
-    var frameSrc = out.output === 'pdf' ? url + '#view=FitH' : url;
-    var srcShort = t.src.replace(/^https:\/\//, '');
-    var st = steps(t, out);
+    var shape = shapeOf(t);
+    var pdf = t.output === 'pdf';
 
     var h = '';
     h += '<button type="button" class="backdrop" data-close tabindex="-1" aria-label="Close"></button>';
     h += '<div class="dialog" role="dialog" aria-modal="true" aria-labelledby="dlg-title">';
 
     // stage
-    h += '<section class="stage dots" aria-label="Rendered output" style="background-color:' + TINT[out.output] + '">';
-    h += '<div class="stage-top"><span class="filechip">' + ICON[out.output].replace('currentColor', out.output === 'pdf' ? '#E8505B' : '#3B7BF6') +
-      esc(out.format + '.' + out.output) + '</span>';
-    h += '<a class="btn-small pop" href="' + esc(url) + '" target="_blank" rel="noopener">Open in new tab' + ICON.external + '</a></div>';
-    h += '<div class="stage-body"><div class="stage-fit"><div class="frame' + (shape === 'slide' ? ' is-slide' : '') + '">';
-    h += '<iframe src="' + esc(frameSrc) + '" title="' + esc(t.title) + ' (' + out.output.toUpperCase() + ')" loading="lazy"></iframe>';
-    h += '<a class="frame-img" href="' + esc(url) + '" target="_blank" rel="noopener" aria-label="Open the rendered ' + out.output.toUpperCase() + '">' + preview(t, out) + '</a>';
-    h += '</div></div>';
+    h += '<section class="stage dots" aria-label="Rendered output" style="background-color:' + TINT[t.output] + '">';
+    h += '<div class="stage-top"><span class="outchip">' + ICON[t.output].replace('currentColor', pdf ? '#E8505B' : '#3B7BF6') +
+      esc(outLabel(t)) + '</span>';
+    h += '<a class="btn-small pop" href="' + esc(t.url) + '" target="_blank" rel="noopener">Open in new tab' + ICON.external + '</a>';
+    if (t.source) {
+      h += '<div class="tabs" role="group" aria-label="Show">' + [['output', 'Output'], ['source', 'Source']].map(function (b) {
+        return '<button type="button" data-tab="' + b[0] + '" aria-pressed="false">' + b[1] + '</button>';
+      }).join('') + '</div>';
+    }
+    h += '</div>';
+    h += '<div class="stage-body' + (pdf ? ' is-pdf' : '') + '">';
+    if (pdf) {
+      h += '<div class="pdf-view pane-out" tabindex="0" aria-label="' + esc(t.title) + ' (PDF)"></div>';
+    } else {
+      h += '<div class="stage-fit pane-out"><div class="frame' + (shape === 'slide' ? ' is-slide' : '') + '">';
+      h += '<iframe src="' + esc(t.url) + '" title="' + esc(t.title) + ' (HTML)" loading="lazy"></iframe>';
+      h += '<a class="frame-img" href="' + esc(t.url) + '" target="_blank" rel="noopener" aria-label="Open the rendered HTML">' + preview(t) + '</a>';
+      h += '</div></div>';
+    }
+    if (t.source) h += '<div class="src-view" hidden></div>';
     if (list.length > 1) {
       h += '<button type="button" class="nav nav-prev pop" data-step="-1" aria-label="Previous template"><svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 3L5 8l5 5"/></svg></button>';
       h += '<button type="button" class="nav nav-next pop" data-step="1" aria-label="Next template"><svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3l5 5-5 5"/></svg></button>';
@@ -248,60 +310,187 @@
     h += '<span class="position">' + (idx + 1) + ' / ' + list.length + '</span>';
     h += '</div></section>';
 
-    // aside
-    h += '<aside class="aside">';
+    h += '<aside class="aside"></aside></div>';
+
+    modal.innerHTML = h;
+    modal.hidden = false;
+    modal._list = list;
+    modal._idx = idx;
+    document.body.classList.add('modal-open');
+    renderAside(t);
+    if (pdf) openPdf(modal.querySelector('.pdf-view'), t);
+    applyTab(t);
+  }
+
+  // Switch the stage between the rendered output and its source, keeping both alive.
+  function applyTab(t) {
+    var modal = $('modal'), src = modal.querySelector('.src-view');
+    var showSrc = state.tab === 'source' && !!src;
+    modal.querySelector('.pane-out').hidden = showSrc;
+    modal.querySelector('.stage-body').classList.toggle('is-src', showSrc);
+    modal.querySelectorAll('[data-tab]').forEach(function (b) {
+      b.setAttribute('aria-pressed', b.getAttribute('data-tab') === (showSrc ? 'source' : 'output') ? 'true' : 'false');
+    });
+    if (!src) return;
+    src.hidden = !showSrc;
+    if (showSrc && !src.firstChild) loadSource(src, t);
+  }
+
+  // --- source view --------------------------------------------------------------
+  // The code is one plain <pre>, and the line numbers sit in a separate column drawn
+  // with CSS, so selecting text and copying gives exactly the source.
+
+  function loadSource(box, t) {
+    var head = '<div class="src-head"><span class="src-name">' + esc(t.source_name || 'source.qmd') + '</span>';
+    box.innerHTML = '<div class="src-card">' + head + '</div><div class="src-msg">Loading…</div></div>';
+    fetch(t.source).then(function (r) {
+      if (!r.ok) throw new Error(r.status);
+      return r.text();
+    }).then(function (text) {
+      if (state.open !== t.id) return;
+      var lines = window.highlightQmd(text);
+      box._text = text;
+      box.innerHTML = '<div class="src-card">' + head +
+        '<button type="button" class="src-copy" data-src-copy>' + ICON.copy + '<span>Copy</span></button></div>' +
+        '<div class="src-code"><div class="src-gutter" aria-hidden="true">' +
+        lines.map(function (_, i) { return '<span data-n="' + (i + 1) + '"></span>'; }).join('') +
+        '</div><pre class="src-pre" tabindex="0" aria-label="Source of ' + esc(t.title) + '"><code>' + lines.join('\n') + '\n</code></pre></div></div>';
+    }).catch(function () {
+      if (state.open !== t.id) return;
+      box.querySelector('.src-msg').textContent = 'The source could not be loaded.';
+    });
+  }
+
+  function renderAside(t) {
+    var srcShort = t.src.replace(/^https:\/\//, '');
+    var cmds = [];
+    var h = '';
     h += '<div class="aside-head"><div class="tags">';
     h += '<span class="tag tinted c-' + t.kind + '">' + (t.kind === 'doc' ? ICON.doc : ICON.slides) + (t.kind === 'doc' ? 'Document' : 'Slides') + '</span>';
     h += t.builtin ? '<span class="tag">' + ICON.builtin.replace('2.2', '2.6').replace(/16/g, '14') + 'Built-in</span>'
                    : '<span class="tag">' + ICON.ext.replace('2.2', '2.6').replace(/16/g, '14') + 'Extension</span>';
     h += '</div><button type="button" class="close" data-close aria-label="Close"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M5 5l10 10M15 5L5 15"/></svg></button></div>';
 
-    h += '<div class="titles"><h2 id="dlg-title">' + esc(t.title) + '</h2><span class="origin-line">' + esc(t.origin) + '</span>' +
+    h += '<div class="titles"><h2 id="dlg-title">' + esc(t.title) + '</h2>' +
+      '<a class="origin-line" href="' + esc(t.src) + '" target="_blank" rel="noopener">' + esc(t.origin) + ICON.external + '</a>' +
       (t.description ? '<p>' + esc(t.description) + '</p>' : '') + '</div>';
-
-    h += '<div class="views" role="group" aria-label="Rendered format">';
-    t.outputs.forEach(function (o) {
-      h += '<button type="button" class="chip c-' + o.output + '" data-view="' + esc(o.format) + '" aria-pressed="' + (o === out) + '">' +
-        ICON[o.output].replace(/14/g, '16') + (t.outputs.filter(function (x) { return x.output === o.output; }).length > 1 ? esc(o.format) : o.output.toUpperCase()) + '</button>';
-    });
-    h += '</div>';
 
     h += '<div class="setup"><div class="setup-head"><h3>' + ICON.terminal + 'Set it up</h3>' +
       (t.builtin ? '<span class="pill">Nothing to install</span>' : '') + '</div>';
-    if (t.setup === 'extension') {
-      h += '<div class="paths" role="group" aria-label="Setup path">' +
-        [['new', 'New project'], ['add', 'Existing project']].map(function (p) {
-          return '<button type="button" data-path="' + p[0] + '" aria-pressed="' + (state.path === p[0]) + '">' + p[1] + '</button>';
-        }).join('') + '</div>';
-    }
-    h += '<ol class="steps">';
-    st.forEach(function (s, i) {
-      h += '<li><span class="step-text"><span class="step-n">' + (i + 1) + '</span>' + esc(s.text) + '</span>' +
-        '<div class="cmd"><span class="cmd-prompt" style="color:' + (s.yaml ? '#B9CFFF' : '#F2A93B') + '">' + (s.yaml ? 'yaml' : '$') + '</span>' +
-        '<code>' + esc(s.cmd) + '</code>' +
-        '<button type="button" class="copy" data-copy="' + i + '" aria-label="Copy: ' + esc(s.cmd) + '">' + ICON.copy + '</button></div></li>';
+    setupGroups(t).forEach(function (g) {
+      if (g.title) h += '<h4 class="path-title">' + esc(g.title) + '</h4>';
+      h += '<ol class="steps">';
+      g.steps.forEach(function (s, i) {
+        h += '<li><span class="step-text"><span class="step-n">' + (i + 1) + '</span>' + esc(s.text) + '</span>' +
+          '<div class="cmd' + (s.yaml ? ' cmd-yaml' : '') + '">' + (s.yaml ? '' : '<span class="cmd-prompt">$</span>') +
+          '<code>' + esc(s.cmd) + '</code>' +
+          '<button type="button" class="copy" data-copy="' + cmds.length + '" aria-label="Copy: ' + esc(s.cmd) + '">' + ICON.copy + '</button></div></li>';
+        cmds.push(s.cmd);
+      });
+      h += '</ol>';
     });
-    h += '</ol></div>';
+    h += '</div>';
 
     h += '<div class="aside-foot"><a class="btn-primary pop" href="' + esc(t.src) + '" target="_blank" rel="noopener">' +
       (t.builtin ? ICON.book + 'Read the docs' : ICON.code + 'View source') + '</a>';
     h += '<span class="meta">' + esc(srcShort) + '<br>' + 'Rendered ' + esc(t.rendered || '') + ' with Quarto ' + esc(DATA.quarto) +
       (t.rev ? ' from <a href="https://github.com/' + esc(t.repo) + '/commit/' + esc(t.rev) + '" target="_blank" rel="noopener">' + esc(t.rev.slice(0, 7)) + '</a>' : '') + '</span>';
-    h += '</div></aside></div>';
+    h += '</div>';
 
-    modal.innerHTML = h;
-    modal.hidden = false;
-    modal._steps = st;
-    modal._list = list;
-    modal._idx = idx;
-    document.body.classList.add('modal-open');
+    $('modal').querySelector('.aside').innerHTML = h;
+    $('modal')._cmds = cmds;
   }
 
-  function open(id, view) {
+  // --- PDF viewer -------------------------------------------------------------
+  // pdf.js draws the pages straight onto the stage: no toolbar, just pages to scroll.
+
+  var pdfjs = null;     // promise of the pdf.js library, loaded on first use
+  var viewer = null;    // the PDF on the stage: { task, observer }
+
+  function loadPdfjs() {
+    if (!pdfjs) {
+      pdfjs = new Promise(function (resolve, reject) {
+        var s = document.createElement('script');
+        s.src = PDFJS + 'pdf.min.js';
+        s.onload = function () {
+          window.pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS + 'pdf.worker.min.js';
+          resolve(window.pdfjsLib);
+        };
+        s.onerror = function () { pdfjs = null; s.remove(); reject(new Error('pdf.js failed to load')); };
+        document.head.appendChild(s);
+      });
+    }
+    return pdfjs;
+  }
+
+  function closePdf() {
+    if (!viewer) return;
+    if (viewer.observer) viewer.observer.disconnect();
+    if (viewer.task) viewer.task.destroy();
+    viewer = null;
+  }
+
+  function openPdf(box, t) {
+    var v = viewer = {};
+    loadPdfjs().then(function (lib) {
+      if (viewer !== v) return null;
+      v.task = lib.getDocument(t.url);
+      return v.task.promise;
+    }).then(function (doc) {
+      if (!doc || viewer !== v) return;
+      return doc.getPage(1).then(function (first) {
+        if (viewer !== v) return;
+        var vp = first.getViewport({ scale: 1 });
+        var pages = [];
+        for (var i = 1; i <= doc.numPages; i++) {
+          var el = document.createElement('div');
+          el.className = 'pdf-page';
+          el.style.aspectRatio = vp.width + ' / ' + vp.height;  // until the page itself is loaded
+          if (vp.width > vp.height) el.classList.add('is-wide');
+          el._n = i;
+          box.appendChild(el);
+          pages.push(el);
+        }
+        // Draw pages as they come near the viewport.
+        v.observer = new IntersectionObserver(function (entries) {
+          entries.forEach(function (e) {
+            if (!e.isIntersecting || e.target._drawn) return;
+            e.target._drawn = true;
+            v.observer.unobserve(e.target);
+            drawPage(doc, e.target, v);
+          });
+        }, { root: box, rootMargin: '800px 0px' });
+        pages.forEach(function (el) { v.observer.observe(el); });
+      });
+    }).catch(function (err) {
+      if (viewer !== v) return;
+      // pdf.js unavailable (offline, blocked CDN): fall back to the browser's own viewer.
+      if (window.console) console.warn(err);
+      box.outerHTML = '<div class="stage-fit pane-out"' + (box.hidden ? ' hidden' : '') + '><div class="frame"><iframe src="' + esc(t.url) + '#view=FitH" title="' + esc(t.title) + ' (PDF)"></iframe>' +
+        '<a class="frame-img" href="' + esc(t.url) + '" target="_blank" rel="noopener" aria-label="Open the rendered PDF">' + preview(t) + '</a></div></div>';
+    });
+  }
+
+  function drawPage(doc, el, v) {
+    doc.getPage(el._n).then(function (page) {
+      if (viewer !== v) return;
+      var base = page.getViewport({ scale: 1 });
+      el.style.aspectRatio = base.width + ' / ' + base.height;
+      var dpr = Math.min(window.devicePixelRatio || 1, 3);
+      var vp = page.getViewport({ scale: Math.max(el.clientWidth, 300) * dpr / base.width });
+      var canvas = document.createElement('canvas');
+      canvas.width = Math.floor(vp.width);
+      canvas.height = Math.floor(vp.height);
+      return page.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise.then(function () {
+        if (viewer === v) el.appendChild(canvas);
+      });
+    }).catch(function () { el._drawn = false; });
+  }
+
+  function open(id, tab) {
     if (!state.open) lastFocus = document.activeElement;
     state.open = id;
-    state.view = view || null;
-    state.path = 'new';
+    state.tab = tab === 'source' ? 'source' : 'output';
     renderDialog();
     syncHash();
     var close = document.querySelector('#modal .close');
@@ -317,37 +506,50 @@
     var m = $('modal'), list = m._list;
     var next = list[(m._idx + delta + list.length) % list.length];
     state.open = next.id;
-    state.view = null;
     renderDialog();
     syncHash();
     var btn = document.querySelector('#modal [data-step="' + delta + '"]');
     if (btn) btn.focus();
   }
 
-  // Deep links: #<id> or #<id>/<format>
+  // Deep links: #<id>, or #<id>/source for the source view
   function syncHash() {
-    var h = state.open ? '#' + state.open + (state.view ? '/' + state.view : '') : ' ';
+    var h = state.open ? '#' + state.open + (state.tab === 'source' && byId(state.open).source ? '/source' : '') : ' ';
     if (location.hash !== h) history.replaceState(null, '', h === ' ' ? location.pathname + location.search : h);
   }
   function fromHash() {
-    var m = decodeURIComponent(location.hash.slice(1)).split('/');
-    if (m[0] && byId(m[0])) open(m[0], m[1]);
+    // (older links may carry a format instead: #<id>/<format>)
+    var parts = decodeURIComponent(location.hash.slice(1)).split('/');
+    if (parts[0] && byId(parts[0])) {
+      if (parts[0] === state.open) { state.tab = parts[1] === 'source' ? 'source' : 'output'; applyTab(byId(state.open)); }
+      else open(parts[0], parts[1]);
+    }
     else if (state.open) close();
   }
 
   // --- events ---------------------------------------------------------------
 
   document.addEventListener('click', function (e) {
-    var el = e.target.closest('[data-open],[data-toggle],[data-quick],[data-close],[data-step],[data-view],[data-path],[data-copy]');
+    var el = e.target.closest('[data-open],[data-toggle],[data-quick],[data-close],[data-step],[data-copy],[data-tab],[data-src-copy]');
     if (!el) return;
     if (el.hasAttribute('data-open')) return open(el.getAttribute('data-open'));
     if (el.hasAttribute('data-close')) return close();
+    if (el.hasAttribute('data-tab')) { state.tab = el.getAttribute('data-tab'); applyTab(byId(state.open)); return syncHash(); }
+    if (el.hasAttribute('data-src-copy')) {
+      copyText(el.closest('.src-view')._text);
+      el.classList.add('done');
+      el.innerHTML = ICON.check + '<span>Copied</span>';
+      clearTimeout(el._timer);
+      el._timer = setTimeout(function () {
+        el.classList.remove('done');
+        el.innerHTML = ICON.copy + '<span>Copy</span>';
+      }, 1600);
+      return;
+    }
     if (el.hasAttribute('data-step')) return step(+el.getAttribute('data-step'));
-    if (el.hasAttribute('data-view')) { state.view = el.getAttribute('data-view'); renderDialog(); syncHash(); return focusSame('data-view', state.view); }
-    if (el.hasAttribute('data-path')) { state.path = el.getAttribute('data-path'); renderDialog(); return focusSame('data-path', state.path); }
     if (el.hasAttribute('data-copy')) {
-      var cmd = $('modal')._steps[+el.getAttribute('data-copy')].cmd;
-      if (navigator.clipboard) navigator.clipboard.writeText(cmd).catch(function () {});
+      var cmd = $('modal')._cmds[+el.getAttribute('data-copy')];
+      copyText(cmd);
       document.querySelectorAll('#modal .copy.done').forEach(function (b) { b.classList.remove('done'); b.innerHTML = ICON.copy; });
       el.classList.add('done');
       el.innerHTML = ICON.check;
@@ -373,10 +575,6 @@
       return renderList();
     }
   });
-  function focusSame(attr, val) {
-    var b = document.querySelector('#modal [' + attr + '="' + val + '"]');
-    if (b) b.focus();
-  }
 
   // Hovering a half pushes the diagonal toward its sibling.
   document.querySelectorAll('.split').forEach(function (split) {
@@ -394,7 +592,9 @@
   $('q').addEventListener('input', function (e) { state.query = e.target.value; renderList(); });
   $('clear').addEventListener('click', resetFilters);
   $('empty-clear').addEventListener('click', resetFilters);
-  $('shuffle').addEventListener('click', function () { state.seed = (state.seed * 31 + 17) % 9973; renderCollage(); });
+  $('shuffle').addEventListener('click', shuffle);
+  var resizeTimer;
+  window.addEventListener('resize', function () { clearTimeout(resizeTimer); resizeTimer = setTimeout(layoutCollage, 100); });
 
   document.addEventListener('keydown', function (e) {
     if (!state.open) return;
@@ -403,7 +603,7 @@
       if ($('modal')._list.length > 1) { e.preventDefault(); step(e.key === 'ArrowLeft' ? -1 : 1); }
     } else if (e.key === 'Tab') {
       // keep focus inside the dialog
-      var f = Array.prototype.filter.call($('modal').querySelectorAll('.dialog a[href], .dialog button, .dialog iframe'), function (n) { return n.offsetParent !== null; });
+      var f = Array.prototype.filter.call($('modal').querySelectorAll('.dialog a[href], .dialog button, .dialog iframe, .dialog .pdf-view, .dialog .src-pre'), function (n) { return n.offsetParent !== null; });
       if (!f.length) return;
       var first = f[0], last = f[f.length - 1];
       if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
@@ -412,7 +612,8 @@
   });
   window.addEventListener('hashchange', fromHash);
 
-  renderCollage();
+  renderCollage(true);
   renderList();
+  if (document.fonts) document.fonts.ready.then(layoutCollage);  // the hero's height settles once fonts load
   fromHash();
 })();

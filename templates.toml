@@ -4,8 +4,9 @@
 # and output paths). Only `title` and `format` are required:
 #
 #   title    Display name.
-#   format   Quarto format to render, or a list of formats (one per output),
-#            e.g. "html", "typst", "riso-revealjs", ["plos-pdf", "plos-html"].
+#   format   Quarto format to render, e.g. "html", "typst", "riso-revealjs".
+#            One per entry: a template with several formats gets an entry
+#            for each.
 #   repo     GitHub "owner/repo" the template comes from. Leave out for
 #            Quarto's built-in formats, which render a shared sample from
 #            samples/.
@@ -24,8 +25,9 @@
 #   description  One sentence shown in the template's popup.
 #   preview-page Page of the PDF to use as the thumbnail (default: 1).
 #
-# Kind (document or slides) and output (PDF or HTML) are inferred from the
-# format name; the setup instructions are derived from `repo` and `file`.
+# Kind (document or slides), output (PDF or HTML) and typesetting engine
+# (LaTeX, Typst or none) are inferred from the format name; the setup
+# instructions are derived from `repo` and `file`.
 
 # --- Built-in formats -------------------------------------------------------
 
