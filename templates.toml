@@ -170,52 +170,52 @@ format = "pdf"
 # --- Reveal.js themes -------------------------------------------------------
 
 [clean-revealjs]
+# A minimalist, elegant theme with a quiet title slide and restrained colour accents.
 title = "Clean"
 repo = "grantmcdermott/quarto-revealjs-clean"
 format = "clean-revealjs"
-description = "A minimalist, elegant theme with a quiet title slide and restrained colour accents."
 
 [coeos]
+# A dark grey title slide with a logo, a white rule and the full literal date.
 title = "Coeos"
 repo = "mcanouil/quarto-revealjs-coeos"
 format = "coeos-revealjs"
-description = "Bold section slides and a gradient title slide, with light and dark variants."
 
 [metropolis-revealjs]
 title = "Metropolis"
 repo = "shafayetShafee/metropolis-beamer"
 format = "metropolis-beamer-revealjs"
-description = "The Beamer Metropolis look, rebuilt for Reveal.js: dark frame titles and a progress bar."
+description = "A Reveal.js port of the Metropolis Beamer theme."
 
 [rladies]
+# The R-Ladies purple palette and logo, for meetup and community talks.
 title = "R-Ladies"
 repo = "beatrizmilz/quarto-rladies-theme"
 format = "rladies-revealjs"
-description = "The R-Ladies purple palette and logo, for meetup and community talks."
 
 [letterbox]
 title = "Letterbox"
 repo = "EmilHvitfeldt/quarto-revealjs-letterbox"
 format = "letterbox-revealjs"
-description = "Slides framed in a letterbox, with a colour band behind them, after the xaringan theme."
+description = "Inspired by xaringan's letterbox style."
 
 [earth]
+# Watercolour textures in earthy greens and browns.
 title = "Earth"
 repo = "EmilHvitfeldt/quarto-revealjs-earth"
 format = "earth-revealjs"
-description = "Watercolour textures in earthy greens and browns."
 
 [nes]
 title = "NES"
 repo = "EmilHvitfeldt/quarto-nes-theme"
 format = "nes-revealjs"
-description = "8-bit pixel type and boxes, based on NES.css."
+description = "Built on NES.css."
 
 [blackboard]
+# Chalk lettering on a dark green blackboard.
 title = "Blackboard"
 repo = "schochastics/quarto-blackboard-theme"
 format = "blackboard-revealjs"
-description = "Chalk lettering on a dark green blackboard."
 
 # --- Typst slides -----------------------------------------------------------
 
@@ -224,138 +224,138 @@ title = "Clean (Typst)"
 repo = "kazuyanagimoto/quarto-clean-typst"
 format = "clean-typst"
 kind = "slides"
-description = "A minimalist slide theme for PDF presentations, built on Touying."
+description = "PDF slides built on Touying, the Typst slide package."
 
 # --- Academic articles -------------------------------------------------------
 
 [hikmah-pdf]
+# A clean, readable article layout for working papers and preprints.
 title = "Hikmah Article (LaTeX)"
 repo = "andrewheiss/hikmah-academic-quarto"
 format = "hikmah-pdf"
-description = "A clean, readable article layout for working papers and preprints."
 
 [hikmah-typst]
+# The Hikmah article layout, typeset with Typst.
 title = "Hikmah Article (Typst)"
 repo = "andrewheiss/hikmah-academic-quarto"
 format = "hikmah-typst"
-description = "The Hikmah article layout, typeset with Typst."
 
 [apaquarto-typst]
+# A manuscript in APA 7th edition style: title page, running head and APA references.
 title = "APA 7 (Typst)"
 repo = "wjschne/apaquarto"
 format = "apaquarto-typst"
-description = "A manuscript in APA 7th edition style: title page, running head and APA references."
 
 [apaquarto-pdf]
+# A manuscript in APA 7th edition style, typeset with LaTeX.
 title = "APA 7 (LaTeX)"
 repo = "wjschne/apaquarto"
 format = "apaquarto-pdf"
-description = "A manuscript in APA 7th edition style, typeset with LaTeX."
 
 [apaquarto-html]
+# A manuscript in APA 7th edition style, as a web page.
 title = "APA 7 (HTML)"
 repo = "wjschne/apaquarto"
 format = "apaquarto-html"
-description = "A manuscript in APA 7th edition style, as a web page."
 
 [academic-typst]
+# A modern working-paper layout for economics and the social sciences.
 title = "Academic Manuscript"
 repo = "kazuyanagimoto/quarto-academic-typst"
 format = "academic-typst"
-description = "A modern working-paper layout for economics and the social sciences."
 
 [preprint]
+# A preprint with author affiliations, abstract and keywords, typeset with Typst.
 title = "Preprint"
 repo = "mvuorre/quarto-preprint"
 format = "preprint-typst"
-description = "A preprint with author affiliations, abstract and keywords, typeset with Typst."
 
 [arxiv]
+# The look of the popular arxiv-style LaTeX template.
 title = "arXiv Preprint"
 repo = "mikemahoney218/quarto-arxiv"
 format = "arxiv-pdf"
-description = "The look of the popular arxiv-style LaTeX template."
 
 [tufte-typst]
+# A Tufte-style handout with a wide margin for sidenotes and figures.
 title = "Tufte Handout"
 repo = "christopherkenny/tufte"
 format = "tufte-typst"
-description = "A Tufte-style handout with a wide margin for sidenotes and figures."
 
 [ams]
+# An article in the style of the American Mathematical Society.
 title = "AMS Article"
 repo = "quarto-ext/typst-templates"
 file = "ams/template.qmd"
 format = "ams-typst"
-description = "An article in the style of the American Mathematical Society."
 
 [ieee]
+# A two-column conference paper in IEEE style.
 title = "IEEE Paper"
 repo = "quarto-ext/typst-templates"
 file = "ieee/template.qmd"
 format = "ieee-typst"
-description = "A two-column conference paper in IEEE style."
 
 # --- Journal formats ---------------------------------------------------------
 
 [elsevier]
+# A submission for Elsevier journals, using the elsarticle class.
 title = "Elsevier"
 repo = "quarto-journals/elsevier"
 format = "elsevier-pdf"
-description = "A submission for Elsevier journals, using the elsarticle class."
 
 [plos]
+# A submission for Public Library of Science journals.
 title = "PLOS"
 repo = "quarto-journals/plos"
 format = "plos-pdf"
-description = "A submission for Public Library of Science journals."
 
 [jss]
+# An article for the Journal of Statistical Software.
 title = "Journal of Statistical Software"
 repo = "quarto-journals/jss"
 format = "jss-pdf"
-description = "An article for the Journal of Statistical Software."
 
 [jasa]
+# A submission for the journals of the American Statistical Association.
 title = "JASA"
 repo = "quarto-journals/jasa"
 format = "jasa-pdf"
-description = "A submission for the journals of the American Statistical Association."
 
 # --- Other documents --------------------------------------------------------
 
 [prettytypst]
+# A Typst document with a coloured sidebar, logo and modern sans-serif type.
 title = "PrettyTypst"
 repo = "nrennie/PrettyTypst"
 format = "PrettyTypst-typst"
-description = "A Typst document with a coloured sidebar, logo and modern sans-serif type."
 
 [sketchy]
+# A hand-drawn look for HTML documents, with handwritten type and sketched boxes.
 title = "Sketchy"
 repo = "schochastics/quarto-sketchy-html"
 format = "sketchy-html"
-description = "A hand-drawn look for HTML documents, with handwritten type and sketched boxes."
 
 [dept-news]
+# A two-column newsletter with a cover image and coloured sidebar.
 title = "Department Newsletter"
 repo = "quarto-ext/typst-templates"
 file = "dept-news/template.qmd"
 format = "dept-news-typst"
-description = "A two-column newsletter with a cover image and coloured sidebar."
 
 [poster]
+# A large-format scientific poster.
 title = "Poster"
 repo = "quarto-ext/typst-templates"
 file = "poster/template.qmd"
 format = "poster-typst"
-description = "A large-format scientific poster."
 
 [fiction]
+# A novel or short story, set as a printed book.
 title = "Fiction"
 repo = "quarto-ext/typst-templates"
 file = "fiction/template.qmd"
 format = "fiction-typst"
-description = "A novel or short story, set as a printed book."
 
 # --- CVs, letters and invoices ----------------------------------------------
 
@@ -369,23 +369,23 @@ description = "The Awesome-CV LaTeX design, reimplemented in Typst."
 title = "Academic CV"
 repo = "mps9506/quarto-cv"
 format = "quarto-cv-pdf"
-description = "A classic academic CV with publication lists drawn from BibTeX files."
+description = "Publication lists are drawn from BibTeX files."
 
 [letter]
+# A formal letter with sender block, recipient address and signature.
 title = "Letter"
 repo = "mcanouil/quarto-letter"
 format = "letter-pdf"
-description = "A formal letter with sender block, recipient address and signature."
 
 [letter-typst]
+# A simple business letter, typeset with Typst.
 title = "Letter (Typst)"
 repo = "quarto-ext/typst-templates"
 file = "letter/template.qmd"
 format = "letter-typst"
-description = "A simple business letter, typeset with Typst."
 
 [invoice]
+# An invoice with itemised services, VAT and payment details.
 title = "Invoice"
 repo = "mcanouil/quarto-invoice"
 format = "invoice-typst"
-description = "An invoice with itemised services, VAT and payment details."
