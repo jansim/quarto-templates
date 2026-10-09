@@ -19,7 +19,12 @@
 #   options      Format options merged into the document's front matter,
 #                e.g. options = { titlepage = "formal" }, so one repo can
 #                yield several entries.
-#   description  One sentence shown in the template's popup.
+#   remove-options  Format options to drop from the document's front matter,
+#                as a list of keys ("a.b" for nested ones), e.g. a theme's
+#                settings that don't suit the variant set in `options`.
+#   description  One sentence shown in the template's popup. Only for what
+#                the preview and title don't already convey; keep notes on
+#                a template's look as comments instead.
 #   preview-page Page of the PDF to use as the thumbnail (default: 1).
 #   kind         "doc" or "slides", for formats whose base format suggests the
 #                wrong one (e.g. Typst slide decks).
@@ -53,34 +58,34 @@ format = "beamer"
 # --- jansim/quarto-revealjs-themes ------------------------------------------
 
 [riso]
+# Two risograph inks on uncoated paper, with halftone fields and misregistered type.
 title = "Riso Zine"
 repo = "jansim/quarto-revealjs-themes"
 format = "riso-revealjs"
-description = "Two risograph inks on uncoated paper, with halftone fields and misregistered type."
 
 [nocturne]
+# A dark keynote: serif drama on near-black, quiet orbit lines and one luminous accent.
 title = "Nocturne"
 repo = "jansim/quarto-revealjs-themes"
 format = "nocturne-revealjs"
-description = "A dark keynote: serif drama on near-black, quiet orbit lines and one luminous accent."
 
 [blueprint]
+# Technical drawing on cyanotype blue, with a faint grid, dimension lines and a title block.
 title = "Blueprint"
 repo = "jansim/quarto-revealjs-themes"
 format = "blueprint-revealjs"
-description = "Technical drawing on cyanotype blue, with a faint grid, dimension lines and a title block."
 
 [scholar]
+# The journal article, projected: book serifs, booktabs tables and small-caps labels.
 title = "Scholar"
 repo = "jansim/quarto-revealjs-themes"
 format = "scholar-revealjs"
-description = "The journal article, projected: book serifs, booktabs tables and small-caps labels."
 
 [pop]
+# Neo-brutalist UI energy: thick black outlines, hard offset shadows and flat primaries.
 title = "Brutalist Pop"
 repo = "jansim/quarto-revealjs-themes"
 format = "pop-revealjs"
-description = "Neo-brutalist UI energy: thick black outlines, hard offset shadows and flat primaries."
 
 # --- nmfs-opensci/quarto_titlepages -----------------------------------------
 
@@ -97,6 +102,7 @@ repo = "nmfs-opensci/quarto_titlepages"
 file = "example_2.qmd"
 format = "titlepage-pdf"
 options = { titlepage = "formal", coverpage = "none" }
+remove-options = ["titlepage-bg-image"]  # the bg-image theme's corner graphic
 preview-page = 2  # page 1 is the copyright page
 
 [titlepage-vline]
@@ -105,6 +111,7 @@ repo = "nmfs-opensci/quarto_titlepages"
 file = "example_2.qmd"
 format = "titlepage-pdf"
 options = { titlepage = "vline", coverpage = "none" }
+remove-options = ["titlepage-bg-image"]  # the bg-image theme's corner graphic
 preview-page = 2  # page 1 is the copyright page
 
 [titlepage-colorbox]
@@ -113,6 +120,7 @@ repo = "nmfs-opensci/quarto_titlepages"
 file = "example_2.qmd"
 format = "titlepage-pdf"
 options = { titlepage = "colorbox", coverpage = "none" }
+remove-options = ["titlepage-bg-image"]  # the bg-image theme's corner graphic
 preview-page = 2  # page 1 is the copyright page
 
 [titlepage-academic]
@@ -121,16 +129,17 @@ repo = "nmfs-opensci/quarto_titlepages"
 file = "example_2.qmd"
 format = "titlepage-pdf"
 options = { titlepage = "academic", coverpage = "none" }
+remove-options = ["titlepage-bg-image"]  # the bg-image theme's corner graphic
 preview-page = 2  # page 1 is the copyright page
 
 # --- danilofreire/quarto-templates ------------------------------------------
 
 [freire-article]
+# Double-spaced article with Libertine type, abstract, keywords and JEL codes.
 title = "Academic Article"
 repo = "danilofreire/quarto-templates"
 file = "article/article.qmd"
 format = "pdf"
-description = "Double-spaced article with Libertine type, abstract, keywords and JEL codes."
 
 [freire-title-page]
 title = "Article with Title Page"

@@ -106,6 +106,9 @@ def load_config() -> list[dict]:
         repo = e.get("repo")
         if repo and not re.fullmatch(r"[\w.-]+/[\w.-]+", repo):
             raise ValueError(f"[{tid}]: repo must look like 'owner/name'")
+        remove = e.get("remove-options", [])
+        if not (isinstance(remove, list) and all(isinstance(k, str) for k in remove)):
+            raise ValueError(f"[{tid}]: remove-options must be a list of option names")
         builtin = repo is None
         if builtin:
             file = e.get("file") or ("slides.qmd" if kind == "slides" else "document.qmd")
@@ -119,6 +122,7 @@ def load_config() -> list[dict]:
             "ref": e.get("ref"),
             "file": file,
             "options": e.get("options") or {},
+            "remove_options": remove,
             "description": e.get("description", ""),
             "preview_page": int(e.get("preview-page", 1)),
             "builtin": builtin,
@@ -240,8 +244,18 @@ def declared_formats(doc: Path) -> list[str]:
     return [str(f) for f in formats] if isinstance(formats, (list, dict)) else []
 
 
-def with_options(src: Path, fmt: str, options: dict) -> Path:
-    """Copy of src with options merged into the front matter of format fmt."""
+def remove_option(options: dict, path: str) -> None:
+    """Delete a dotted key path (e.g. "titlepage-theme.vrule-color") if present."""
+    *parents, last = path.split(".")
+    for key in parents:
+        options = options.get(key)
+        if not isinstance(options, dict):
+            return
+    options.pop(last, None)
+
+
+def with_options(src: Path, fmt: str, options: dict, remove: list[str]) -> Path:
+    """Copy of src with options merged into, and the keys in remove dropped from, format fmt's front matter."""
     text = src.read_text(encoding="utf-8")
     m = FRONT_MATTER.match(text)
     meta = (yaml.safe_load(m.group(1)) if m else None) or {}
@@ -255,6 +269,8 @@ def with_options(src: Path, fmt: str, options: dict) -> Path:
         formats = {}
     current = formats.get(fmt)
     formats[fmt] = deep_merge(current if isinstance(current, dict) else {}, options)
+    for path in remove:
+        remove_option(formats[fmt], path)
     meta["format"] = formats
     dumped = yaml.safe_dump(meta, sort_keys=False, allow_unicode=True, width=1000)
     dest = src.with_name(f"gallery-{src.stem}.qmd")
@@ -282,7 +298,9 @@ def prepare_source(entry: dict, rev: str | None, tmp: Path) -> Path:
         doc = workdir / rel.name
     if not doc.exists():
         raise FileNotFoundError(f"{entry['file']} not found in source")
-    return with_options(doc, entry["format"], entry["options"]) if entry["options"] else doc
+    if entry["options"] or entry["remove_options"]:
+        return with_options(doc, entry["format"], entry["options"], entry["remove_options"])
+    return doc
 
 
 def save_source(entry: dict, rev: str | None, dest: Path) -> None:
@@ -316,7 +334,7 @@ def render_entry(entry: dict, rev: str | None, dest: Path) -> list[dict]:
         return [{
             "format": fmt, "output": output, "file": out_name,
             # does the template already use this format as is?
-            "native": not entry["options"] and fmt in declared_formats(src),
+            "native": not (entry["options"] or entry["remove_options"]) and fmt in declared_formats(src),
         }]
 
 
@@ -453,6 +471,8 @@ def cache_key(entry: dict, rev: str | None) -> str:
         "v": RENDER_VERSION,
         # "formats" stays a list, as when entries could have several, so existing caches stay valid
         "entry": {"formats": [entry["format"]], **{k: entry[k] for k in ("repo", "ref", "file", "options", "preview_page")}},
+        # only when set, so entries without it keep their cache
+        **({"remove_options": entry["remove_options"]} if entry["remove_options"] else {}),
         "rev": rev if not entry["builtin"] else samples_hash(),
         "quarto": quarto_version(),
     }
