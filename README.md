@@ -1,8 +1,10 @@
-# quarto-templates
+# Quarto Template Gallery
 
-A gallery of Quarto templates, each rendered from source, so you can pick one
-by its actual output. Every entry links to its rendered HTML or PDF and shows
-the commands to use it.
+## Intro (human-written 💁‍♂️)
+
+This repo contains the source code for the quarto template gallery, a collection of quarto templates / formats from around the web, each rendered to make them easier to browse / compare. I build, as I often found myself wanting to quickly compare existing templates to choose one for a particular project (when I didn't want to reinvent the wheel by restyling an existing format.
+
+This is a classic vibe-coded project, I'm mostly interested in the results / final deliverable, not the actual code that powers the website. As such, please keep that in mind. The most interesting document in this repo may be the `templates.toml`, which serves as a collection of interesting templates from across the web. If you feel like one is missing, feel free to [submit an issue](https://github.com/jansim/quarto-templates/issues/new?template=add-template.yml) or PR to add it.
 
 ## Adding a template
 
