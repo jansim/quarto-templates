@@ -231,7 +231,7 @@
 
   function card(t, i) {
     var shape = shapeOf(t);
-    var pw = shape === 'page' ? '64%' : (shape === 'web' ? '72%' : '78%');
+    var pw = shape === 'page' ? '70%' : (shape === 'web' ? '72%' : '78%');
     var ty = shape === 'page' ? '0%' : '8%';
     var rot = i % 2 ? 2.5 : -2.5;
     return '<button type="button" class="card" data-open="' + esc(t.id) + '" aria-haspopup="dialog">' +
