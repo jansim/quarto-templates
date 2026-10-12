@@ -9,6 +9,7 @@
   var ENGINE = { latex: 'LaTeX', typst: 'Typst' };
   var PDFJS = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/';
   var COLLAGE_MAX = 6;
+  var ZOOM_MIN = 48;    // smallest PDF page size, in % of full width; at the bottom pages sit two to a row
 
   TEMPLATES.forEach(function (t, i) {
     t.accent = ACCENTS[i % ACCENTS.length];
@@ -21,6 +22,7 @@
     query: '',
     open: null,     // id of the template shown in the dialog
     tab: 'output',  // what the dialog's stage shows: 'output' | 'source'
+    zoom: 100,      // PDF page size in %, from ZOOM_MIN up to 100 (filling the stage)
     seed: Math.floor(Math.random() * 9973)
   };
   var lastFocus = null;
@@ -60,6 +62,8 @@
     html: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 7l-5 5 5 5M16 7l5 5-5 5"/></svg>',
     builtin: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#11A37F" stroke-width="2.2" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M4 7.5l8 4.5 8-4.5M12 12v9"/></svg>',
     ext: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 2v5M15 2v5M6 7h12v4a6 6 0 0 1-12 0z"/><path d="M12 17v5"/></svg>',
+    page: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="1.75" width="9" height="12.5" rx="1"/></svg>',
+    spread: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" aria-hidden="true"><rect x="1.5" y="4" width="5.5" height="8" rx=".8"/><rect x="9" y="4" width="5.5" height="8" rx=".8"/></svg>',
     copy: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="5" y="5" width="8.5" height="8.5" rx="1.5"/><path d="M11 5V3.5A1.5 1.5 0 0 0 9.5 2h-6A1.5 1.5 0 0 0 2 3.5v6A1.5 1.5 0 0 0 3.5 11H5"/></svg>',
     check: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8.5l3 3 7-7"/></svg>',
     external: '<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 2h7v7M12 2L5.5 8.5M10 12H2V4"/></svg>',
@@ -323,6 +327,11 @@
     h += '<section class="stage dots" aria-label="Rendered output" style="background-color:' + TINT[t.output] + '">';
     h += '<div class="stage-top"><span class="outchip">' + ICON[t.output].replace('currentColor', pdf ? '#E8505B' : '#3B7BF6') +
       esc(outLabel(t)) + '</span>';
+    if (pdf) {
+      h += '<label class="zoom" title="Page size">' + ICON.spread +
+        '<input type="range" min="' + ZOOM_MIN + '" max="100" step="1" value="' + state.zoom + '" data-zoom aria-label="Page size">' +
+        ICON.page + '</label>';
+    }
     h += '<a class="btn-small open-out" href="' + esc(t.url) + '" target="_blank" rel="noopener">Open in new tab' + ICON.external + '</a>';
     if (t.source) {
       h += '<div class="tabs" role="group" aria-label="Show">' + [['output', 'Output'], ['source', 'Source']].map(function (b) {
@@ -364,6 +373,8 @@
     modal.querySelector('.pane-out').hidden = showSrc;
     modal.querySelector('.stage-body').classList.toggle('is-src', showSrc);
     modal.querySelector('.open-out').hidden = showSrc;
+    var zoom = modal.querySelector('.zoom');
+    if (zoom) zoom.hidden = showSrc || !modal.querySelector('.pdf-view');
     modal.querySelectorAll('[data-tab]').forEach(function (b) {
       b.setAttribute('aria-pressed', b.getAttribute('data-tab') === (showSrc ? 'source' : 'output') ? 'true' : 'false');
     });
@@ -466,8 +477,30 @@
     viewer = null;
   }
 
+  // Size the pages: the slider scales them down from filling the stage, and at its
+  // bottom end they pair up two to a row for skimming. The reading position is kept.
+  function applyZoom(box) {
+    var spread = state.zoom <= ZOOM_MIN + 1;
+    var at = box.scrollHeight > box.clientHeight ? box.scrollTop / (box.scrollHeight - box.clientHeight) : 0;
+    box.style.setProperty('--zoom', state.zoom / 100);
+    box.classList.toggle('is-spread', spread);
+    box.scrollTop = at * (box.scrollHeight - box.clientHeight);
+    // pages drawn while smaller than they are now get redrawn sharper, once the slider settles
+    clearTimeout(box._redraw);
+    box._redraw = setTimeout(function () {
+      if (!viewer || !viewer.observer) return;
+      box.querySelectorAll('.pdf-page').forEach(function (el) {
+        if (el._drawn && el._drawW && el.clientWidth > el._drawW * 1.15) {
+          el._drawn = false;
+          viewer.observer.observe(el);
+        }
+      });
+    }, 250);
+  }
+
   function openPdf(box, t) {
     var v = viewer = {};
+    applyZoom(box);
     loadPdfjs().then(function (lib) {
       if (viewer !== v) return null;
       v.task = lib.getDocument(t.url);
@@ -502,6 +535,8 @@
       if (viewer !== v) return;
       // pdf.js unavailable (offline, blocked CDN): fall back to the browser's own viewer.
       if (window.console) console.warn(err);
+      var zoom = document.querySelector('#modal .zoom');
+      if (zoom) zoom.remove();
       box.outerHTML = '<div class="stage-fit pane-out"' + (box.hidden ? ' hidden' : '') + '><div class="frame"><iframe src="' + esc(t.url) + '#view=FitH" title="' + esc(t.title) + ' (PDF)"></iframe>' +
         '<a class="frame-img" href="' + esc(t.url) + '" target="_blank" rel="noopener" aria-label="Open the rendered PDF">' + preview(t) + '</a></div></div>';
     });
@@ -513,12 +548,16 @@
       var base = page.getViewport({ scale: 1 });
       el.style.aspectRatio = base.width + ' / ' + base.height;
       var dpr = Math.min(window.devicePixelRatio || 1, 3);
-      var vp = page.getViewport({ scale: Math.max(el.clientWidth, 300) * dpr / base.width });
+      var w = el.clientWidth;
+      var vp = page.getViewport({ scale: Math.max(w, 300) * dpr / base.width });
       var canvas = document.createElement('canvas');
       canvas.width = Math.floor(vp.width);
       canvas.height = Math.floor(vp.height);
       return page.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise.then(function () {
-        if (viewer === v) el.appendChild(canvas);
+        if (viewer !== v) return;
+        var old = el.querySelector('canvas');
+        if (old) el.replaceChild(canvas, old); else el.appendChild(canvas);
+        el._drawW = w;
       });
     }).catch(function () { el._drawn = false; });
   }
@@ -625,6 +664,12 @@
     });
   });
 
+  document.addEventListener('input', function (e) {
+    if (!e.target.hasAttribute('data-zoom')) return;
+    state.zoom = +e.target.value;
+    var box = document.querySelector('#modal .pdf-view');
+    if (box) applyZoom(box);
+  });
   $('q').addEventListener('input', function (e) { state.query = e.target.value; renderList(); });
   $('clear').addEventListener('click', resetFilters);
   $('empty-clear').addEventListener('click', resetFilters);
