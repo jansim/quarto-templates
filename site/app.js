@@ -124,16 +124,31 @@
   // --- hero -----------------------------------------------------------------
 
   // The collage: up to six templates, picked by the seed, laid out on a loose
-  // grid. Each tile is sized from its thumbnail's proportions so tall pages
-  // and wide slides get a similar footprint, whatever the draw.
-  function renderCollage(animate) {
+  // grid. Templates matching the current filters come first; when too few
+  // match, the rest of the draw fills the remaining spots. Each tile is sized
+  // from its thumbnail's proportions so tall pages and wide slides get a
+  // similar footprint, whatever the draw.
+  function seeded() {
     var s = state.seed;
-    function rnd() { s = (s * 9301 + 49297) % 233280; return s / 233280; }
+    return function () { s = (s * 9301 + 49297) % 233280; return s / 233280; };
+  }
+  function collagePicks() {
+    var rnd = seeded();
     var pool = TEMPLATES.slice();
     for (var i = pool.length - 1; i > 0; i--) {
       var j = Math.floor(rnd() * (i + 1)); var tmp = pool[i]; pool[i] = pool[j]; pool[j] = tmp;
     }
-    var picks = pool.slice(0, COLLAGE_MAX);
+    var shown = visible();
+    var hit = function (t) { return shown.indexOf(t) > -1; };
+    return pool.filter(hit).concat(pool.filter(function (t) { return !hit(t); })).slice(0, COLLAGE_MAX);
+  }
+  function collageKey() { return state.seed + ':' + collagePicks().map(function (t) { return t.id; }).join(','); }
+
+  function renderCollage(animate) {
+    var rnd = seeded();
+    for (var i = 1; i < TEMPLATES.length; i++) rnd();  // skip past the draw, so the jitter matches it
+    var picks = collagePicks();
+    state.collage = collageKey();
     var order = picks.map(function (_, k) { return k; }).sort(function () { return rnd() - 0.5; });
     var html = picks.map(function (t, k) {
       var r = (k % 2 ? 1 : -1) * (2 + rnd() * 6);
@@ -182,6 +197,18 @@
     btn.classList.remove('spin');
     void btn.offsetWidth;  // restart the icon's spin
     btn.classList.add('spin');
+    swapCollage();
+  }
+
+  // Redraw the collage when the filters change which templates it shows.
+  function refreshCollage() {
+    if (state.collage === collageKey()) return;
+    if (reducedMotion()) return renderCollage(false);
+    swapCollage();
+  }
+
+  function swapCollage() {
+    state.collage = collageKey();  // what the pending redraw will show
     $('collage').querySelectorAll('.tile').forEach(function (n) { n.classList.remove('entering'); n.classList.add('leaving'); });
     clearTimeout(shuffle.timer);
     shuffle.timer = setTimeout(function () { renderCollage(true); }, 200);
@@ -228,6 +255,7 @@
       b.setAttribute('aria-pressed', state[p[0]][p[1]] ? 'true' : 'false');
     });
     renderQuick();
+    refreshCollage();
   }
 
   // --- dialog ---------------------------------------------------------------
