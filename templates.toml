@@ -294,6 +294,12 @@ file = "example-academic.qmd"
 format = "dtslides-revealjs"
 options = { chalkboard = false }  # incompatible with the gallery's self-contained HTML
 
+[terminal]
+# A retro shell: pixel-glow headings, a status bar, progress dots and CRT scanlines.
+title = "Terminal"
+repo = "rpodcast/quarto-revealjs-terminal"
+format = "terminal-revealjs"
+
 # --- Typst slides -----------------------------------------------------------
 
 [clean-typst]
