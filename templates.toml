@@ -30,8 +30,10 @@
 #                wrong one (e.g. Typst slide decks).
 #   replace      Text replacements in the document, as [old, new] pairs, e.g.
 #                to swap a code chunk for one that needs fewer R packages
-#                (CI installs only knitr, rmarkdown and ggplot2). Trailing
-#                whitespace is ignored; a build fails if `old` isn't found.
+#                (CI installs only knitr, rmarkdown and ggplot2). A `*` in
+#                `old` matches any text, across lines (`\\*` for a literal
+#                one); trailing whitespace is ignored. A build fails if `old`
+#                isn't found.
 #
 # Kind (document or slides), output (PDF or HTML) and typesetting engine
 # (LaTeX, Typst or none) are inferred from the format name; the setup
@@ -202,37 +204,8 @@ replace = [
   ["library(dplyr)\n", ""],
   ["g <- starwars", "g <- mtcars"],
   ["geom_point(aes(x = height, y = mass))", "geom_point(aes(x = wt, y = mpg))"],
-  ['''tab <- starwars |>
-  tidyr::drop_na(species) |>
-  group_by(species) |>
-  summarise(
-    n = n(),
-    mean_heigth = round(mean(height, na.rm = TRUE)),
-    mean_mass = round(mean(mass, na.rm = TRUE))
-  ) |>
-  slice_max(order_by = n, n = 4)''', "tab <- head(mtcars[, 1:4], 4)"],
-  ['''## `DT::datatable()` {.smaller}
-
-With the `smaller` class in the slide!
-Ex: `## slide name {.smaller}`
-
-```{r}
-DT::datatable(tab, options = list(pageLength = 5))
-```
-
-## `gt::gt()`
-
-```{r}
-gt::gt(tab)
-```
-
-## `reactable::reactable()`
-
-```{r}
-reactable::reactable(tab)
-```
-
-''', ""],
+  ["tab <- starwars |>*slice_max(order_by = n, n = 4)", "tab <- head(mtcars[, 1:4], 4)"],
+  ["## `DT::datatable()` {.smaller}*reactable::reactable(tab)\n```\n\n", ""],
 ]
 
 [letterbox]
@@ -399,9 +372,7 @@ title = "Academic Manuscript"
 repo = "kazuyanagimoto/quarto-academic-typst"
 format = "academic-typst"
 # knitr::kable instead of tinytable
-replace = [['''nt <- "_Notes_: This table shows the first six rows of the mtcars dataset."
-mtcars[1:5, 1:5] |>
-  tinytable::tt(width = 0.8, notes = nt)''', "knitr::kable(mtcars[1:5, 1:5])"]]
+replace = [['nt <- "_Notes_*tinytable::tt(width = 0.8, notes = nt)', "knitr::kable(mtcars[1:5, 1:5])"]]
 
 [preprint]
 # A preprint with author affiliations, abstract and keywords, typeset with Typst.
@@ -415,12 +386,7 @@ title = "arXiv Preprint"
 repo = "mikemahoney218/quarto-arxiv"
 format = "arxiv-pdf"
 # knitr::kable instead of broom and kableExtra
-replace = [['''# install.packages("broom")
-# install.packages("kableExtra")
-data("quine", package = "MASS")
-m_pois <- glm(Days ~ (Eth + Sex + Age + Lrn)^2, data = quine, family = poisson)
-kableExtra::kable_styling(
-  kableExtra::kbl(broom::tidy(m_pois))
+replace = [['''# install.packages("broom")*kableExtra::kbl(broom::tidy(m_pois))
 )''', '''data("quine", package = "MASS")
 m_pois <- glm(Days ~ (Eth + Sex + Age + Lrn)^2, data = quine, family = poisson)
 knitr::kable(coef(summary(m_pois)), digits = 3)''']]
@@ -429,43 +395,12 @@ knitr::kable(coef(summary(m_pois)), digits = 3)''']]
 title = "AOG Article"
 repo = "AaronGullickson/aog-article-quarto"
 format = "aog-article-pdf"
-# knitr::kable instead of gt, modelsummary and palmerpenguins
+# knitr::kable instead of gt and modelsummary, and R's own penguins (R >= 4.5)
 replace = [
-  ['''if(!require(tidyverse)) {
-  install.packages("tidyverse")
-  library(tidyverse)
-}
-if(!require(modelsummary)) {
-  install.packages("modelsummary")
-  library(modelsummary)
-}
-if(!require(gt)) {
-  install.packages("gt")
-  library(gt)
-}
-if(!require(palmerpenguins)) {
-  install.packages("palmerpenguines")
-  library(palmerpenguins)
-}''', "library(ggplot2)"],
-  ['''style_gt_table <- function(gt_table) {
-  gt_table |>
-    tab_options(
-      table.font.size = 12,
-      data_row.padding = px(2),
-      heading.align = "left",
-      table.align = "center"
-    ) |>
-    opt_table_font(font = "Times New Roman")
-}''', ""],
-  ["#| tbl-cap: Some Palmer Penguin Data", "#| tbl-cap: Some Iris Data"],
-  ['''palmerpenguins::penguins[c(1,200,205,307),] |>
-  select(species, island, body_mass_g, bill_length_mm, sex) |>
-  gt() |>
-  style_gt_table()''', "knitr::kable(iris[c(1, 51, 101, 150), ])"],
-  ['''modelsummary(list(model1, model2, model3),
-             output = "gt",
-             format = 3) |>
-  style_gt_table()''', "knitr::kable(coef(summary(model3)), digits = 3)"],
+  ["if(!require(tidyverse)) {*library(palmerpenguins)\n}", "library(ggplot2)"],
+  ["style_gt_table <- function(gt_table) {*\n}", ""],
+  ['palmerpenguins::penguins*style_gt_table()', 'knitr::kable(penguins[c(1, 200, 205, 307), c("species", "island", "body_mass", "bill_len", "sex")])'],
+  ['modelsummary(*style_gt_table()', "knitr::kable(coef(summary(model3)), digits = 3)"],
 ]
 
 [tufte-typst]

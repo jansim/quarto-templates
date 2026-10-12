@@ -40,7 +40,7 @@ SITE_SRC = ROOT / "site"
 CACHE = ROOT / ".cache"
 
 # Bump to invalidate every cached render (e.g. after changing how renders work).
-RENDER_VERSION = "1"
+RENDER_VERSION = "2"
 
 # Base format -> (kind, output). Extension formats are "<name>-<base>".
 BASE_FORMATS = {
@@ -208,19 +208,6 @@ def apply_quartoignore(workdir: Path) -> None:
                     path.unlink()
 
 
-def namespace_extensions(workdir: Path, owner: str) -> None:
-    """Move _extensions/<name> to _extensions/<owner>/<name>, as `quarto use template` does,
-    for extensions whose files refer to that installed path."""
-    root = workdir / "_extensions"
-    if not root.is_dir():
-        return
-    for ext in [d for d in root.iterdir() if (d / "_extension.yml").exists()]:
-        installed = f"_extensions/{owner}/{ext.name}/"
-        if any(installed in f.read_text(errors="ignore") for f in ext.rglob("*") if f.is_file()):
-            (root / owner).mkdir(exist_ok=True)
-            ext.rename(root / owner / ext.name)
-
-
 # --- rendering --------------------------------------------------------------
 
 
@@ -312,25 +299,42 @@ def apply_replacements(doc: Path, replace: list[list[str]]) -> None:
     """Replace text in doc, e.g. to swap a code chunk for one with fewer dependencies.
 
     Every occurrence is replaced; trailing whitespace on a line doesn't affect matching.
+    A `*` in old matches any text, across lines (`\\*` is a literal asterisk).
     """
     text = doc.read_text(encoding="utf-8")
     for old, new in replace:
-        pattern = r"[ \t]*\n".join(re.escape(line.rstrip()) for line in old.split("\n"))
-        text, n = re.subn(pattern, lambda _: new, text)
+        pattern = ".*?".join(
+            r"[ \t]*\n".join(re.escape(line.rstrip()) for line in part.replace(r"\*", "*").split("\n"))
+            for part in re.split(r"(?<!\\)\*", old)
+        )
+        text, n = re.subn(pattern, lambda _: new, text, flags=re.S)
         if not n:
             # upstream changed: fail rather than render something unintended
             raise ValueError(f"replace: {old.splitlines()[0]!r}... not found in {doc.name}")
     doc.write_text(text, encoding="utf-8")
 
 
-def uses_root_extension(source: Path, sub: Path) -> bool:
-    """Is the document in sub an example of the extension at the repo's root?"""
-    return sub != Path(".") and (source / "_extensions").is_dir() and not (source / sub / "_extensions").exists()
+def install_extensions(source: Path, workdir: Path, owner: str) -> bool:
+    """Install the repo's root extensions into workdir where `quarto add` and
+    `quarto use template` put them: _extensions/<owner>/<name>. Returns whether
+    there were any."""
+    src = source / "_extensions"
+    if not src.is_dir():
+        return False
+    dest = workdir / "_extensions"
+    shutil.rmtree(dest, ignore_errors=True)
+    for ext in (d for d in src.iterdir() if d.is_dir()):
+        # a folder without _extension.yml is already an <owner> level
+        target = dest / owner / ext.name if (ext / "_extension.yml").exists() else dest / ext.name
+        shutil.copytree(ext, target)
+    return True
 
 
-def prepare_source(entry: dict, rev: str | None, tmp: Path) -> Path:
-    """Copy an entry's source into tmp; return the document to render, options applied."""
+def prepare_source(entry: dict, rev: str | None, tmp: Path) -> tuple[Path, bool]:
+    """Copy an entry's source into tmp; return the document to render, options
+    applied, and whether it renders with the extension at the repo's root."""
     workdir = tmp / "src"
+    root_extension = False
     if entry["builtin"]:
         shutil.copytree(SAMPLES, workdir)
         doc = workdir / entry["file"]
@@ -342,30 +346,29 @@ def prepare_source(entry: dict, rev: str | None, tmp: Path) -> Path:
         shutil.copytree(source / sub, workdir, ignore=shutil.ignore_patterns(".git"))
         if sub == Path("."):
             apply_quartoignore(workdir)
-            namespace_extensions(workdir, entry["repo"].split("/")[0])
-        elif uses_root_extension(source, sub):
-            # an example of the extension at the repo's root
-            shutil.copytree(source / "_extensions", workdir / "_extensions")
+        # a template in a subfolder may bring its own extensions
+        if sub == Path(".") or not (workdir / "_extensions").exists():
+            root_extension = install_extensions(source, workdir, entry["repo"].split("/")[0])
         doc = workdir / rel.name
     if not doc.exists():
         raise FileNotFoundError(f"{entry['file']} not found in source")
     if entry["replace"]:
         apply_replacements(doc, entry["replace"])
     if entry["options"] or entry["remove_options"]:
-        return with_options(doc, entry["format"], entry["options"], entry["remove_options"])
-    return doc
+        doc = with_options(doc, entry["format"], entry["options"], entry["remove_options"])
+    return doc, root_extension
 
 
 def save_source(entry: dict, rev: str | None, dest: Path) -> None:
     """Store the document an entry is rendered from, for the site's source view."""
     with tempfile.TemporaryDirectory(prefix=f"qt-{entry['id']}-") as tmp:
-        shutil.copy2(prepare_source(entry, rev, Path(tmp)), dest / SOURCE_NAME)
+        shutil.copy2(prepare_source(entry, rev, Path(tmp))[0], dest / SOURCE_NAME)
 
 
 def render_entry(entry: dict, rev: str | None, dest: Path) -> list[dict]:
     """Render an entry into dest; return its output records (just the one)."""
     with tempfile.TemporaryDirectory(prefix=f"qt-{entry['id']}-") as tmp:
-        src = prepare_source(entry, rev, Path(tmp))
+        src, root_extension = prepare_source(entry, rev, Path(tmp))
         workdir = Path(tmp) / "src"
         shutil.copy2(src, dest / SOURCE_NAME)  # before rendering, which may write next to it
 
@@ -388,8 +391,8 @@ def render_entry(entry: dict, rev: str | None, dest: Path) -> list[dict]:
             "format": fmt, "output": output, "file": out_name,
             # does the template already use this format as is?
             "native": not (entry["options"] or entry["remove_options"]) and fmt in declared_formats(src),
-            "example": not entry["builtin"] and uses_root_extension(
-                CACHE / "repos" / entry["repo"].replace("/", "__"), Path(entry["file"]).parent),
+            # a document in a subfolder that uses the repo's extension
+            "example": root_extension and Path(entry["file"]).parent != Path("."),
         }]
 
 
