@@ -328,9 +328,10 @@
     h += '<div class="stage-top"><span class="outchip">' + ICON[t.output].replace('currentColor', pdf ? '#E8505B' : '#3B7BF6') +
       esc(outLabel(t)) + '</span>';
     if (pdf) {
-      h += '<label class="zoom" title="Page size">' + ICON.spread +
-        '<input type="range" min="' + ZOOM_MIN + '" max="100" step="1" value="' + state.zoom + '" data-zoom aria-label="Page size">' +
-        ICON.page + '</label>';
+      // left is full size; sliding right shrinks the pages
+      h += '<label class="zoom" title="Page size">' + ICON.page +
+        '<input type="range" min="' + ZOOM_MIN + '" max="100" step="1" value="' + (100 + ZOOM_MIN - state.zoom) + '" data-zoom aria-label="Shrink pages">' +
+        ICON.spread + '</label>';
     }
     h += '<a class="btn-small open-out" href="' + esc(t.url) + '" target="_blank" rel="noopener">Open in new tab' + ICON.external + '</a>';
     if (t.source) {
@@ -666,7 +667,7 @@
 
   document.addEventListener('input', function (e) {
     if (!e.target.hasAttribute('data-zoom')) return;
-    state.zoom = +e.target.value;
+    state.zoom = 100 + ZOOM_MIN - e.target.value;
     var box = document.querySelector('#modal .pdf-view');
     if (box) applyZoom(box);
   });
