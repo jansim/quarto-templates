@@ -354,8 +354,10 @@ img { display: block; max-width: 100%; }
   align-self: flex-start; font-family: var(--mono); font-size: 13px; color: var(--muted); overflow-wrap: anywhere;
   text-decoration: underline; text-decoration-color: var(--line); text-underline-offset: 3px;
 }
-.titles .origin-line svg { display: inline-block; margin-left: 5px; vertical-align: -1px; }
-.titles .origin-line svg:first-child { margin: 0 6px 0 0; vertical-align: -2px; }
+.titles .origin-line > svg { display: inline-block; margin: 0 6px 0 0; vertical-align: -2px; }
+/* External-link icon sits like a superscript on the last line of the link, so it can never wrap alone */
+.titles .origin-text { position: relative; padding-right: 14px; }
+.titles .origin-text svg { position: absolute; right: 0; bottom: 0.6em; width: 11px; height: 11px; }
 .titles .origin-line:hover { color: var(--link); text-decoration-color: currentColor; }
 .titles p { margin: 4px 0 0; font-size: 15px; line-height: 1.45; color: var(--muted); }
 .setup { display: flex; flex-direction: column; gap: 14px; }
