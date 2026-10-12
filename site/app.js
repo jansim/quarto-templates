@@ -65,6 +65,7 @@
     external: '<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 2h7v7M12 2L5.5 8.5M10 12H2V4"/></svg>',
     code: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 18l6-6-6-6M8 6l-6 6 6 6"/></svg>',
     book: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h6a3 3 0 0 1 3 3v13a2 2 0 0 0-2-2H4zM20 4h-6a3 3 0 0 0-3 3v13a2 2 0 0 1 2-2h7z"/></svg>',
+    github: '<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>',
     terminal: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="M7 9l3 3-3 3M12.5 15H17"/></svg>'
   };
 
@@ -308,13 +309,16 @@
 
     var h = '';
     h += '<button type="button" class="backdrop" data-close tabindex="-1" aria-label="Close"></button>';
+    var nav = list.length > 1;
+    h += '<div class="shell">';
+    if (nav) h += '<button type="button" class="nav nav-prev pop" data-step="-1" aria-label="Previous template"><svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 3L5 8l5 5"/></svg></button>';
     h += '<div class="dialog" role="dialog" aria-modal="true" aria-labelledby="dlg-title">';
 
     // stage
     h += '<section class="stage dots" aria-label="Rendered output" style="background-color:' + TINT[t.output] + '">';
     h += '<div class="stage-top"><span class="outchip">' + ICON[t.output].replace('currentColor', pdf ? '#E8505B' : '#3B7BF6') +
       esc(outLabel(t)) + '</span>';
-    h += '<a class="btn-small pop" href="' + esc(t.url) + '" target="_blank" rel="noopener">Open in new tab' + ICON.external + '</a>';
+    h += '<a class="btn-small open-out" href="' + esc(t.url) + '" target="_blank" rel="noopener">Open in new tab' + ICON.external + '</a>';
     if (t.source) {
       h += '<div class="tabs" role="group" aria-label="Show">' + [['output', 'Output'], ['source', 'Source']].map(function (b) {
         return '<button type="button" data-tab="' + b[0] + '" aria-pressed="false">' + b[1] + '</button>';
@@ -331,14 +335,12 @@
       h += '</div></div>';
     }
     if (t.source) h += '<div class="src-view" hidden></div>';
-    if (list.length > 1) {
-      h += '<button type="button" class="nav nav-prev pop" data-step="-1" aria-label="Previous template"><svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 3L5 8l5 5"/></svg></button>';
-      h += '<button type="button" class="nav nav-next pop" data-step="1" aria-label="Next template"><svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3l5 5-5 5"/></svg></button>';
-    }
     h += '<span class="position">' + (idx + 1) + ' / ' + list.length + '</span>';
     h += '</div></section>';
 
     h += '<aside class="aside"></aside></div>';
+    if (nav) h += '<button type="button" class="nav nav-next pop" data-step="1" aria-label="Next template"><svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3l5 5-5 5"/></svg></button>';
+    h += '</div>';
 
     modal.innerHTML = h;
     modal.hidden = false;
@@ -356,6 +358,7 @@
     var showSrc = state.tab === 'source' && !!src;
     modal.querySelector('.pane-out').hidden = showSrc;
     modal.querySelector('.stage-body').classList.toggle('is-src', showSrc);
+    modal.querySelector('.open-out').hidden = showSrc;
     modal.querySelectorAll('[data-tab]').forEach(function (b) {
       b.setAttribute('aria-pressed', b.getAttribute('data-tab') === (showSrc ? 'source' : 'output') ? 'true' : 'false');
     });
@@ -390,7 +393,6 @@
   }
 
   function renderAside(t) {
-    var srcShort = t.src.replace(/^https:\/\//, '');
     var cmds = [];
     var h = '';
     h += '<div class="aside-head"><div class="tags">';
@@ -400,7 +402,8 @@
     h += '</div><button type="button" class="close" data-close aria-label="Close"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M5 5l10 10M15 5L5 15"/></svg></button></div>';
 
     h += '<div class="titles"><h2 id="dlg-title">' + esc(t.title) + '</h2>' +
-      '<a class="origin-line" href="' + esc(t.src) + '" target="_blank" rel="noopener">' + esc(t.origin) + ICON.external + '</a>' +
+      '<a class="origin-line" href="' + esc(t.src) + '" target="_blank" rel="noopener">' +
+      (/^https:\/\/github\.com\//.test(t.src) ? ICON.github : '') + esc(t.origin) + ICON.external + '</a>' +
       (t.description ? '<p>' + esc(t.description) + '</p>' : '') + '</div>';
 
     h += '<div class="setup"><div class="setup-head"><h3>' + ICON.terminal + 'Set it up</h3>' +
@@ -421,7 +424,7 @@
 
     h += '<div class="aside-foot"><a class="btn-primary pop" href="' + esc(t.src) + '" target="_blank" rel="noopener">' +
       (t.builtin ? ICON.book + 'Read the docs' : ICON.code + 'View source') + '</a>';
-    h += '<span class="meta">' + esc(srcShort) + '<br>' + 'Rendered ' + esc(t.rendered || '') + ' with Quarto ' + esc(DATA.quarto) +
+    h += '<span class="meta">Rendered ' + esc(t.rendered || '') + ' with Quarto ' + esc(DATA.quarto) +
       (t.rev ? ' from <a href="https://github.com/' + esc(t.repo) + '/commit/' + esc(t.rev) + '" target="_blank" rel="noopener">' + esc(t.rev.slice(0, 7)) + '</a>' : '') + '</span>';
     h += '</div>';
 
@@ -631,7 +634,7 @@
       if ($('modal')._list.length > 1) { e.preventDefault(); step(e.key === 'ArrowLeft' ? -1 : 1); }
     } else if (e.key === 'Tab') {
       // keep focus inside the dialog
-      var f = Array.prototype.filter.call($('modal').querySelectorAll('.dialog a[href], .dialog button, .dialog iframe, .dialog .pdf-view, .dialog .src-pre'), function (n) { return n.offsetParent !== null; });
+      var f = Array.prototype.filter.call($('modal').querySelectorAll('.nav, .dialog a[href], .dialog button, .dialog iframe, .dialog .pdf-view, .dialog .src-pre'), function (n) { return n.getClientRects().length > 0; });
       if (!f.length) return;
       var first = f[0], last = f[f.length - 1];
       if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
