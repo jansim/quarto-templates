@@ -386,28 +386,28 @@ format = "ieee-typst"
 # --- Journal formats ---------------------------------------------------------
 
 [elsevier]
-# A submission for Elsevier journals, using the elsarticle class.
 title = "Elsevier"
 repo = "quarto-journals/elsevier"
 format = "elsevier-pdf"
+description = "For any Elsevier journal, built on the elsarticle class: set the journal's 1p, 3p or 5p model and its citation style under the journal key."
 
 [plos]
-# A submission for Public Library of Science journals.
 title = "PLOS"
 repo = "quarto-journals/plos"
 format = "plos-pdf"
+description = "For the Public Library of Science journals, such as PLOS ONE and PLOS Biology."
 
 [jss]
-# An article for the Journal of Statistical Software.
 title = "Journal of Statistical Software"
 repo = "quarto-journals/jss"
 format = "jss-pdf"
+description = "Uses the journal's own jss LaTeX class, with markup for package and language names and R> prompts in code output."
 
 [jasa]
-# A submission for the journals of the American Statistical Association.
 title = "JASA"
 repo = "quarto-journals/jasa"
 format = "jasa-pdf"
+description = "For the Journal of the American Statistical Association and the other ASA journals, such as The American Statistician and Technometrics."
 
 # --- Other documents --------------------------------------------------------
 
