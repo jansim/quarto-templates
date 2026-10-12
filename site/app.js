@@ -354,7 +354,19 @@
     document.body.classList.add('modal-open');
     renderAside(t);
     if (pdf) openPdf(modal.querySelector('.pdf-view'), t);
+    else quietDeck(modal.querySelector('.frame iframe'));
     applyTab(t);
+  }
+
+  // Quarto decks write each slide into their URL (reveal.js `hash`/`history`), which pushes
+  // a history entry per slide and makes the preview flicker; keep the embedded deck's URL still.
+  function quietDeck(iframe) {
+    iframe.addEventListener('load', function () {
+      try {
+        var R = iframe.contentWindow.Reveal;
+        if (R && R.configure) R.configure({ hash: false, history: false });
+      } catch (e) { /* not same-origin */ }
+    });
   }
 
   // Switch the stage between the rendered output and its source, keeping both alive.
