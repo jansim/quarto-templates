@@ -290,6 +290,12 @@ showtext_auto()''', "library(ggplot2)"],
   ["fig.showtext = TRUE,", ""],
 ]
 
+[terminal]
+# A retro shell: pixel-glow headings, a status bar, progress dots and CRT scanlines.
+title = "Terminal"
+repo = "rpodcast/quarto-revealjs-terminal"
+format = "terminal-revealjs"
+
 # --- Typst slides -----------------------------------------------------------
 
 [clean-typst]
