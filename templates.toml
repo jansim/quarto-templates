@@ -290,6 +290,37 @@ showtext_auto()''', "library(ggplot2)"],
   ["fig.showtext = TRUE,", ""],
 ]
 
+[storybook]
+title = "Storybook"
+repo = "mcanouil/quarto-revealjs-storybook"
+format = "storybook-revealjs"
+
+[cinco-de-mayo]
+title = "Cinco de Mayo"
+repo = "EmilHvitfeldt/quarto-revealjs-cinco-de-mayo"
+format = "cinco-de-mayo-revealjs"
+# the demo's first heading names its CSS class
+replace = [["## .theme-title1 {.theme-title1 .center}", "## Cinco de Mayo {.theme-title1 .center}"]]
+
+[seasons]
+title = "Seasons"
+repo = "EmilHvitfeldt/quarto-revealjs-seasons"
+format = "revealjs"
+description = "Each slide takes one of four seasonal palettes, set with a .spring, .summer, .fall or .winter class."
+
+[onyxia]
+title = "Onyxia"
+repo = "InseeFrLab/onyxia-quarto"
+format = "onyxia-revealjs"
+options = { chalkboard = false }  # incompatible with the gallery's self-contained HTML
+
+[dtslides]
+title = "dtslides Academic"
+repo = "Data-Wise/dtslides"
+file = "example-academic.qmd"
+format = "dtslides-revealjs"
+options = { chalkboard = false }  # incompatible with the gallery's self-contained HTML
+
 # --- Typst slides -----------------------------------------------------------
 
 [clean-typst]
@@ -298,6 +329,37 @@ repo = "kazuyanagimoto/quarto-clean-typst"
 format = "clean-typst"
 kind = "slides"
 description = "PDF slides built on Touying, the Typst slide package."
+
+[projector]
+title = "Projector"
+repo = "christopherkenny/projector"
+format = "projector-typst"
+kind = "slides"
+description = "PDF slides built on Polylux, a Typst slide package."
+
+[touying-metropolis]
+title = "Touying: Metropolis"
+repo = "kazuyanagimoto/quarto-touying-typst"
+format = "touying-typst"
+kind = "slides"
+options = { theme = "metropolis" }
+description = "Touying's own themes, picked with the theme option: default, simple, metropolis, dewdrop, university, aqua or stargazer."
+
+[touying-stargazer]
+title = "Touying: Stargazer"
+repo = "kazuyanagimoto/quarto-touying-typst"
+format = "touying-typst"
+kind = "slides"
+options = { theme = "stargazer" }
+description = "Touying's own themes, picked with the theme option: default, simple, metropolis, dewdrop, university, aqua or stargazer."
+
+[touying-aqua]
+title = "Touying: Aqua"
+repo = "kazuyanagimoto/quarto-touying-typst"
+format = "touying-typst"
+kind = "slides"
+options = { theme = "aqua" }
+description = "Touying's own themes, picked with the theme option: default, simple, metropolis, dewdrop, university, aqua or stargazer."
 
 # --- Academic articles -------------------------------------------------------
 
@@ -363,6 +425,49 @@ kableExtra::kable_styling(
 m_pois <- glm(Days ~ (Eth + Sex + Age + Lrn)^2, data = quine, family = poisson)
 knitr::kable(coef(summary(m_pois)), digits = 3)''']]
 
+[aog-article]
+title = "AOG Article"
+repo = "AaronGullickson/aog-article-quarto"
+format = "aog-article-pdf"
+# knitr::kable instead of gt, modelsummary and palmerpenguins
+replace = [
+  ['''if(!require(tidyverse)) {
+  install.packages("tidyverse")
+  library(tidyverse)
+}
+if(!require(modelsummary)) {
+  install.packages("modelsummary")
+  library(modelsummary)
+}
+if(!require(gt)) {
+  install.packages("gt")
+  library(gt)
+}
+if(!require(palmerpenguins)) {
+  install.packages("palmerpenguines")
+  library(palmerpenguins)
+}''', "library(ggplot2)"],
+  ['''style_gt_table <- function(gt_table) {
+  gt_table |>
+    tab_options(
+      table.font.size = 12,
+      data_row.padding = px(2),
+      heading.align = "left",
+      table.align = "center"
+    ) |>
+    opt_table_font(font = "Times New Roman")
+}''', ""],
+  ["#| tbl-cap: Some Palmer Penguin Data", "#| tbl-cap: Some Iris Data"],
+  ['''palmerpenguins::penguins[c(1,200,205,307),] |>
+  select(species, island, body_mass_g, bill_length_mm, sex) |>
+  gt() |>
+  style_gt_table()''', "knitr::kable(iris[c(1, 51, 101, 150), ])"],
+  ['''modelsummary(list(model1, model2, model3),
+             output = "gt",
+             format = 3) |>
+  style_gt_table()''', "knitr::kable(coef(summary(model3)), digits = 3)"],
+]
+
 [tufte-typst]
 # A Tufte-style handout with a wide margin for sidenotes and figures.
 title = "Tufte Handout"
@@ -409,6 +514,22 @@ repo = "quarto-journals/jasa"
 format = "jasa-pdf"
 description = "For the Journal of the American Statistical Association and the other ASA journals, such as The American Statistician and Technometrics."
 
+[acm]
+title = "ACM"
+repo = "quarto-journals/acm"
+format = "acm-pdf"
+description = "For the Association for Computing Machinery's journals and proceedings, built on the acmart class."
+# the format's filter wraps a figure with alt text in a second figure, which LaTeX rejects
+replace = [[' fig-alt="A woman and a girl in white dresses sit in an open car."', ""]]
+# natbib writes the bibliography commands twice with current Quarto; citeproc doesn't
+options = { cite-method = "citeproc" }
+
+[nature]
+title = "Springer Nature"
+repo = "christopherkenny/nature"
+format = "nature-pdf"
+description = "For Springer Nature journal submissions, built on the sn-jnl class."
+
 # --- Other documents --------------------------------------------------------
 
 [prettytypst]
@@ -417,11 +538,24 @@ title = "PrettyTypst"
 repo = "nrennie/PrettyTypst"
 format = "PrettyTypst-typst"
 
+[prettypdf]
+# The PrettyTypst look, typeset with LaTeX.
+title = "PrettyPDF"
+repo = "nrennie/PrettyPDF"
+format = "PrettyPDF-pdf"
+
 [sketchy]
 # A hand-drawn look for HTML documents, with handwritten type and sketched boxes.
 title = "Sketchy"
 repo = "schochastics/quarto-sketchy-html"
 format = "sketchy-html"
+
+[closeread]
+title = "Closeread"
+repo = "qmd-lab/closeread"
+file = "docs/gallery/examples/auden-poem/index.qmd"
+format = "closeread-html"
+description = "Scrollytelling: narrative text scrolls past sticky poems, images and plots that zoom and highlight as you read."
 
 [dept-news]
 # A two-column newsletter with a cover image and coloured sidebar.
@@ -470,6 +604,12 @@ title = "Letter (Typst)"
 repo = "quarto-ext/typst-templates"
 file = "letter/template.qmd"
 format = "letter-typst"
+
+[brief]
+title = "DIN 5008 Letter"
+repo = "mavam/quarto-brief"
+format = "brief-pdf"
+description = "A letter laid out to the German DIN 5008 standard, built on KOMA-Script's scrlttr2."
 
 [invoice]
 # An invoice with itemised services, VAT and payment details.

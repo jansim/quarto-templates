@@ -187,17 +187,38 @@ def apply_quartoignore(workdir: Path) -> None:
     if not ignore.exists():
         return
     patterns = [l.strip() for l in ignore.read_text().splitlines() if l.strip() and not l.startswith("#")]
+    # "!pattern" keeps files an earlier pattern would drop
+    keep = [p[1:].strip("/") for p in patterns if p.startswith("!")]
+
+    def matches(path: Path, rel: str, pattern: str) -> bool:
+        return fnmatch.fnmatch(rel, pattern) or ("/" not in pattern and fnmatch.fnmatch(path.name, pattern))
+
     for pattern in patterns:
+        if pattern.startswith("!"):
+            continue
         pattern = pattern.strip("/")
         for path in list(workdir.rglob("*")):
             rel = path.relative_to(workdir).as_posix()
             if rel.split("/")[0] == "_extensions":
                 continue
-            if fnmatch.fnmatch(rel, pattern) or ("/" not in pattern and fnmatch.fnmatch(path.name, pattern)):
+            if matches(path, rel, pattern) and not any(matches(path, rel, k) for k in keep):
                 if path.is_dir():
                     shutil.rmtree(path, ignore_errors=True)
                 elif path.exists():
                     path.unlink()
+
+
+def namespace_extensions(workdir: Path, owner: str) -> None:
+    """Move _extensions/<name> to _extensions/<owner>/<name>, as `quarto use template` does,
+    for extensions whose files refer to that installed path."""
+    root = workdir / "_extensions"
+    if not root.is_dir():
+        return
+    for ext in [d for d in root.iterdir() if (d / "_extension.yml").exists()]:
+        installed = f"_extensions/{owner}/{ext.name}/"
+        if any(installed in f.read_text(errors="ignore") for f in ext.rglob("*") if f.is_file()):
+            (root / owner).mkdir(exist_ok=True)
+            ext.rename(root / owner / ext.name)
 
 
 # --- rendering --------------------------------------------------------------
@@ -302,6 +323,11 @@ def apply_replacements(doc: Path, replace: list[list[str]]) -> None:
     doc.write_text(text, encoding="utf-8")
 
 
+def uses_root_extension(source: Path, sub: Path) -> bool:
+    """Is the document in sub an example of the extension at the repo's root?"""
+    return sub != Path(".") and (source / "_extensions").is_dir() and not (source / sub / "_extensions").exists()
+
+
 def prepare_source(entry: dict, rev: str | None, tmp: Path) -> Path:
     """Copy an entry's source into tmp; return the document to render, options applied."""
     workdir = tmp / "src"
@@ -316,6 +342,10 @@ def prepare_source(entry: dict, rev: str | None, tmp: Path) -> Path:
         shutil.copytree(source / sub, workdir, ignore=shutil.ignore_patterns(".git"))
         if sub == Path("."):
             apply_quartoignore(workdir)
+            namespace_extensions(workdir, entry["repo"].split("/")[0])
+        elif uses_root_extension(source, sub):
+            # an example of the extension at the repo's root
+            shutil.copytree(source / "_extensions", workdir / "_extensions")
         doc = workdir / rel.name
     if not doc.exists():
         raise FileNotFoundError(f"{entry['file']} not found in source")
@@ -358,6 +388,8 @@ def render_entry(entry: dict, rev: str | None, dest: Path) -> list[dict]:
             "format": fmt, "output": output, "file": out_name,
             # does the template already use this format as is?
             "native": not (entry["options"] or entry["remove_options"]) and fmt in declared_formats(src),
+            "example": not entry["builtin"] and uses_root_extension(
+                CACHE / "repos" / entry["repo"].replace("/", "__"), Path(entry["file"]).parent),
         }]
 
 
@@ -458,6 +490,8 @@ def site_record(entry: dict, manifest: dict) -> dict:
         rec["file"] = file
         rec["setup"] = "extension" if sub == "." else "clone"
     out = manifest["outputs"][0]
+    if out.get("example"):
+        rec["setup"] = "example"
     rec.update({
         "format": out["format"],
         "output": out["output"],
