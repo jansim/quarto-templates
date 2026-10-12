@@ -408,7 +408,7 @@
 
     h += '<div class="titles"><h2 id="dlg-title">' + esc(t.title) + '</h2>' +
       '<a class="origin-line" href="' + esc(t.src) + '" target="_blank" rel="noopener">' +
-      (/^https:\/\/github\.com\//.test(t.src) ? ICON.github : '') + esc(t.origin) + ICON.external + '</a>' +
+      (/^https:\/\/github\.com\//.test(t.src) ? ICON.github : '') + '<span class="origin-text">' + esc(t.origin) + ICON.external + '</span></a>' +
       (t.description ? '<p>' + esc(t.description) + '</p>' : '') + '</div>';
 
     h += '<div class="setup"><div class="setup-head"><h3>' + ICON.terminal + 'Set it up</h3>' +
