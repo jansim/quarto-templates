@@ -123,11 +123,11 @@
 
   // --- hero -----------------------------------------------------------------
 
-  // The collage: up to six templates, picked by the seed, laid out on a loose
-  // grid. Templates matching the current filters come first; when too few
-  // match, the rest of the draw fills the remaining spots. Each tile is sized
-  // from its thumbnail's proportions so tall pages and wide slides get a
-  // similar footprint, whatever the draw.
+  // The collage: up to six of the templates matching the current filters,
+  // picked by the seed, laid out on a loose grid. When fewer match, the grid
+  // shrinks around them and stays centred rather than filling up with others.
+  // Each tile is sized from its thumbnail's proportions so tall pages and wide
+  // slides get a similar footprint, whatever the draw.
   function seeded() {
     var s = state.seed;
     return function () { s = (s * 9301 + 49297) % 233280; return s / 233280; };
@@ -139,8 +139,7 @@
       var j = Math.floor(rnd() * (i + 1)); var tmp = pool[i]; pool[i] = pool[j]; pool[j] = tmp;
     }
     var shown = visible();
-    var hit = function (t) { return shown.indexOf(t) > -1; };
-    return pool.filter(hit).concat(pool.filter(function (t) { return !hit(t); })).slice(0, COLLAGE_MAX);
+    return pool.filter(function (t) { return shown.indexOf(t) > -1; }).slice(0, COLLAGE_MAX);
   }
   function collageKey() { return state.seed + ':' + collagePicks().map(function (t) { return t.id; }).join(','); }
 
@@ -161,6 +160,7 @@
     var box = $('collage');
     box.querySelectorAll('.tile').forEach(function (n) { n.remove(); });
     box.insertAdjacentHTML('afterbegin', html);
+    $('shuffle').hidden = !picks.length;
     layoutCollage();
   }
 
@@ -170,7 +170,11 @@
     var n = tiles.length;
     if (!n || !W) return;
     var rows = n > 3 ? 2 : 1, cols = Math.ceil(n / rows);
-    var cw = W / cols, ch = H / rows, grow = 1.15;  // tiles may spill a little into their neighbours
+    // Cells are sized as for a full 3 x 2 collage, give or take, so fewer
+    // tiles don't balloon to fill the space; the grid then sits centred.
+    var fw = W / 3, fh = H / 2;
+    var cw = Math.min(W / cols, fw * 1.3), ch = Math.min(H / rows, fh * 1.3), grow = 1.15;  // tiles may spill a little into their neighbours
+    var x0 = (W - cols * cw) / 2, y0 = (H - rows * ch) / 2;
     var area = cw * ch * 0.64;  // every tile gets about the same area, whatever its shape
     tiles.forEach(function (el, k) {
       var t = byId(el.getAttribute('data-open'));
@@ -180,8 +184,9 @@
       var w = Math.min(Math.sqrt(area / ratio), cw * grow, (ch * grow - chrome) / ratio + 8);
       var h = (w - 8) * ratio + chrome;
       var row = Math.floor(k / cols), col = k % cols;
-      var cx = (col + 0.5) * cw + (+el.getAttribute('data-jx')) * cw * 0.12 + (row ? cw * 0.1 : -cw * 0.04);
-      var cy = (row + 0.5) * ch + (+el.getAttribute('data-jy')) * ch * 0.1;
+      var inRow = Math.min(cols, n - row * cols);  // a short last row sits centred
+      var cx = x0 + (col + 0.5 + (cols - inRow) / 2) * cw + (+el.getAttribute('data-jx')) * cw * 0.12 + (rows > 1 ? (row ? cw * 0.1 : -cw * 0.04) : 0);
+      var cy = y0 + (row + 0.5) * ch + (+el.getAttribute('data-jy')) * ch * 0.1;
       var left = Math.max(0, Math.min(W - w, cx - w / 2));
       var top = Math.max(0, Math.min(H - h, cy - h / 2));
       el.style.left = (left / W * 100) + '%';
