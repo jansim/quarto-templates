@@ -6,6 +6,11 @@ This repo contains the source code for the quarto template gallery, a collection
 
 This is a classic vibe-coded project, I'm mostly interested in the results / final deliverable, not the actual code that powers the website. As such, please keep that in mind. The most interesting document in this repo may be the `templates.toml`, which serves as a collection of interesting templates from across the web. If you feel like one is missing, feel free to [submit an issue](https://github.com/jansim/quarto-templates/issues/new?template=add-template.yml) or PR to add it.
 
+<p align="center">
+<img width="679" height="640" alt="Screenshot of the gallery." src="https://github.com/user-attachments/assets/5c59b018-11ff-449b-9a78-4f504cf0052e" />
+</p>
+
+
 ## Adding a template
 
 To suggest a template, [open an issue](https://github.com/jansim/quarto-templates/issues/new?template=add-template.yml);
