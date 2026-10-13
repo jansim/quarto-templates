@@ -80,12 +80,13 @@
   function outTag(t) { return '<span class="tag c-' + t.output + '">' + ICON[t.output] + outLabel(t) + '</span>'; }
 
   // A rendered thumbnail, or a drawn stand-in when the build had none.
-  function preview(t) {
+  // eager: always on screen (the collage), so don't wait for layout to load it.
+  function preview(t, eager) {
     var shape = shapeOf(t);
     var bar = shape === 'web' ? '<div class="pv-bar"><i></i><i></i><i></i></div>' : '';
     if (t.thumb) {
       return '<div class="pv pv-' + shape + '">' + bar + '<img src="' + esc(t.thumb) + '" width="' + (t.w || 640) +
-        '" height="' + (t.h || 480) + '" alt="" loading="lazy" decoding="async"></div>';
+        '" height="' + (t.h || 480) + '" alt=""' + (eager ? '' : ' loading="lazy"') + ' decoding="async"></div>';
     }
     return '<div class="pv pv-' + shape + '">' + bar + mock(shape, t.accent) + '</div>';
   }
@@ -159,7 +160,7 @@
       return '<button type="button" class="tile' + (animate ? ' entering' : '') + '" data-open="' + esc(t.id) + '" aria-label="Open ' + esc(t.title) +
         '" data-jx="' + (rnd() * 2 - 1).toFixed(3) + '" data-jy="' + (rnd() * 2 - 1).toFixed(3) +
         '" style="--r:' + r.toFixed(1) + 'deg;--d:' + (k * 60) + 'ms;z-index:' + (order[k] + 1) + '">' +
-        '<div class="tile-frame">' + preview(t) + '</div>' +
+        '<div class="tile-frame">' + preview(t, true) + '</div>' +
         '<span class="tile-sticker" style="background:' + STICKERS[k] + ';transform:rotate(' + (r > 0 ? -4 : 3) + 'deg)">' + esc(t.title) + '</span></button>';
     }).join('');
     var box = $('collage');

@@ -74,6 +74,12 @@ documents in `samples/` or the Quarto version change. A failed render keeps the
 previous output, and the build lists failures in its summary. A render whose
 thumbnail failed is kept, and only the thumbnail is retried on the next build.
 
+HTML outputs are self-contained (`embed-resources`), which inlines every font a
+theme declares in every format it lists (reveal.js decks carried ~2 MB of
+Source Sans Pro as EOT, WOFF and TTF). After rendering, each `@font-face` is cut
+down to a single WOFF2 source, typically shrinking a deck from ~4 MB to ~1 MB;
+the output looks the same. Thumbnails are WebP.
+
 The [GitHub Action](.github/workflows/build.yml) runs the build on every push,
 weekly (to pick up upstream changes) and on demand, keeps `.cache/` between
 runs with `actions/cache`, and deploys `_site/` to GitHub Pages.

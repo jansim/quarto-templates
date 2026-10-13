@@ -17,6 +17,7 @@ built-in formats, the sample documents.
 from __future__ import annotations
 
 import argparse
+import base64
 import fnmatch
 import hashlib
 import html
@@ -29,6 +30,7 @@ import sys
 import tempfile
 import time
 import tomllib
+import urllib.parse
 from pathlib import Path
 
 import yaml
@@ -61,6 +63,7 @@ DOCS = {
 ENGINES = {"pdf": "latex", "beamer": "latex", "typst": "typst"}
 RENDER_TIMEOUT = 20 * 60
 THUMB_WIDTH = 640
+THUMB_QUALITY = 80  # WebP
 
 
 def log(msg: str) -> None:
@@ -396,6 +399,84 @@ def render_entry(entry: dict, rev: str | None, dest: Path) -> list[dict]:
         }]
 
 
+# --- slimming ---------------------------------------------------------------
+# embed-resources inlines every font a theme declares, in every format it lists:
+# reveal.js decks carry Source Sans Pro as EOT, WOFF and TTF (~2 MB), of which a
+# browser only ever uses one. Keep a single source per @font-face, as WOFF2.
+
+FONT_FACE = re.compile(r"@font-face\s*\{[^{}]*\}")
+FONT_SRC = re.compile(r"\bsrc\s*:(?:[^;{}()]|\([^()]*\))*;?")  # url(data:...;base64,...) holds a ;
+FONT_URL = re.compile(r"url\(\s*(['\"]?)(data:([\w/+.-]+)[^,]*?;base64,([A-Za-z0-9+/=\s]+))\1\s*\)(?:\s*format\(\s*['\"]?([\w-]+)['\"]?\s*\))?")
+CSS_DATA_LINK = re.compile(r'(href=")data:text/css,([^"]*)(")')
+STYLE = re.compile(r"(<style\b[^>]*>)(.*?)(</style>)", re.S | re.I)
+# format() names and data: types, most preferred first; EOT and SVG fonts are skipped
+FONT_KINDS = [("woff2", ("woff2", "font/woff2")), ("woff", ("woff", "font/woff", "application/font-woff")),
+              ("sfnt", ("truetype", "opentype", "font/ttf", "font/otf", "font/sfnt", "application/x-font-ttf",
+                        "application/x-font-opentype", "application/font-sfnt"))]
+
+
+def to_woff2(data: bytes) -> bytes | None:
+    try:
+        from fontTools.ttLib import TTFont
+    except ImportError:
+        return None
+    import io
+    try:
+        font = TTFont(io.BytesIO(data))
+        font.flavor = "woff2"
+        out = io.BytesIO()
+        font.save(out)
+        return out.getvalue()
+    except Exception:
+        return None
+
+
+def slim_font_face(rule: str) -> str:
+    """One embedded source per @font-face, converted to WOFF2 where possible."""
+    srcs = FONT_SRC.findall(rule)
+    urls = [u for s in srcs for u in FONT_URL.finditer(s)]
+    # leave rules with sources that aren't embedded (remote files) alone
+    if not urls or sum(s.count("url(") for s in srcs) != len(urls):
+        return rule
+    best = next(((rank, u) for rank, (_, names) in enumerate(FONT_KINDS)
+                 for u in urls if (u.group(5) or u.group(3)).lower() in names), None)
+    if best is None:
+        return rule
+    rank, u = best
+    if rank > 0:
+        data = base64.b64decode(re.sub(r"\s+", "", u.group(4)))
+        woff2 = to_woff2(data)
+        if woff2 and len(woff2) < len(data):
+            rank, u = 0, None
+            src = f"src: url(data:font/woff2;base64,{base64.b64encode(woff2).decode()}) format('woff2');"
+    if u is not None:
+        src = f"src: url({u.group(2)}) format('{FONT_KINDS[rank][1][0]}');"
+    first = FONT_SRC.search(rule)
+    rest = FONT_SRC.sub("", rule[first.end():])
+    return rule[:first.start()] + src + rest
+
+
+def slim_css(css: str) -> str:
+    return FONT_FACE.sub(lambda m: slim_font_face(m.group(0)), css)
+
+
+def slim_html(path: Path) -> None:
+    """Shrink a self-contained HTML file in place (fonts in <style> and in data: stylesheets)."""
+    text = path.read_text(encoding="utf-8")
+
+    def link(m: re.Match) -> str:
+        css = urllib.parse.unquote(m.group(2))
+        if "@font-face" not in css:
+            return m.group(0)
+        # base64 needs no escaping, so the fonts stay as compact as in a <style>
+        return m.group(1) + "data:text/css," + urllib.parse.quote(slim_css(css), safe="/:;,=+()!*-._~@{}[]$?") + m.group(3)
+
+    # only in CSS: scripts may build @font-face rules in strings (e.g. anchor.js)
+    slim = STYLE.sub(lambda m: m.group(1) + slim_css(m.group(2)) + m.group(3), CSS_DATA_LINK.sub(link, text))
+    if len(slim) < len(text):
+        path.write_text(slim, encoding="utf-8")
+
+
 # --- thumbnails -------------------------------------------------------------
 
 
@@ -404,7 +485,7 @@ def pdf_thumb(pdf: Path, out: Path, page: int) -> None:
         raise RuntimeError("pdftoppm not found; install poppler-utils (apt) or poppler (brew)")
     stem = out.with_suffix("")
     run(["pdftoppm", "-f", str(page), "-l", str(page), "-singlefile",
-         "-jpeg", "-jpegopt", "quality=82", "-scale-to-x", str(THUMB_WIDTH), "-scale-to-y", "-1",
+         "-png", "-scale-to-x", str(THUMB_WIDTH), "-scale-to-y", "-1",
          str(pdf), str(stem)], timeout=120)
 
 
@@ -442,21 +523,20 @@ def html_thumb(browser: Browser, page_file: Path, out: Path, slides: bool) -> No
             page.wait_for_function("window.Reveal && Reveal.isReady && Reveal.isReady()", timeout=30_000)
         page.evaluate("document.fonts.ready")
         page.wait_for_timeout(600)
-        page.screenshot(path=str(out), type="jpeg", quality=82)
+        page.screenshot(path=str(out), type="png")
     finally:
         page.close()
 
 
-def image_size(jpeg: Path) -> tuple[int, int]:
-    """Width and height of a JPEG, read from its SOF marker."""
-    data = jpeg.read_bytes()
-    i = 2
-    while i < len(data):
-        marker, length = data[i + 1], int.from_bytes(data[i + 2:i + 4], "big")
-        if marker in (0xC0, 0xC1, 0xC2):
-            return int.from_bytes(data[i + 7:i + 9], "big"), int.from_bytes(data[i + 5:i + 7], "big")
-        i += 2 + length
-    return 0, 0
+def to_webp(png: Path) -> tuple[Path, int, int]:
+    """Convert a PNG thumbnail to WebP (about half the size of a JPEG); return it and its size."""
+    from PIL import Image
+    out = png.with_suffix(".webp")
+    with Image.open(png) as im:
+        im.convert("RGB").save(out, "WEBP", quality=THUMB_QUALITY, method=6)
+        w, h = im.size
+    png.unlink()
+    return out, w, h
 
 
 # --- site data --------------------------------------------------------------
@@ -554,12 +634,13 @@ def build_entry(entry: dict, args, browser: Browser) -> dict | None:
 
     selected = not args.only or entry["id"] in args.only
     if old and old.get("key") == key and not (args.force and selected):
-        if all(out.get("thumb") for out in old["outputs"]) and old.get("source"):
+        if all(has_thumb(out) and slimmed(out) for out in old["outputs"]) and old.get("source"):
             log(f"= {entry['id']} (cached)")
             return old
-        # Rendered fine earlier, but a thumbnail or the source is missing: make just that.
+        # Rendered fine earlier, but a thumbnail, the slimming or the source is missing: make just that.
         log(f"= {entry['id']} (cached, completing)")
         errors = make_thumbs(entry, old["outputs"], store, browser)
+        make_slim(old["outputs"], store)
         if not old.get("source"):
             try:
                 save_source(entry, rev, store)
@@ -582,6 +663,7 @@ def build_entry(entry: dict, args, browser: Browser) -> dict | None:
     try:
         outputs = render_entry(entry, rev, staging)
         thumb_errors = make_thumbs(entry, outputs, staging, browser)
+        make_slim(outputs, staging)
     except Exception as exc:
         log(f"! {entry['id']} failed after {time.time() - started:.0f}s:\n{exc}")
         if old:
@@ -606,23 +688,47 @@ def build_entry(entry: dict, args, browser: Browser) -> dict | None:
 
 
 def make_thumbs(entry: dict, outputs: list[dict], folder: Path, browser: Browser) -> list[str]:
-    """Add a thumbnail to each output that lacks one; return error messages."""
+    """Add a WebP thumbnail to each output that lacks one; return error messages."""
     errors = []
     for out in outputs:
-        if out.get("thumb"):
+        if has_thumb(out):
             continue
-        thumb = Path(out["file"]).with_suffix(".jpg").name
+        png = folder / Path(out["file"]).with_suffix(".png").name
         try:
             if out["output"] == "pdf":
-                pdf_thumb(folder / out["file"], folder / thumb, entry["preview_page"])
+                pdf_thumb(folder / out["file"], png, entry["preview_page"])
             else:
-                html_thumb(browser, folder / out["file"], folder / thumb, entry["kind"] == "slides")
-            out["thumb"] = thumb
-            out["w"], out["h"] = image_size(folder / thumb)
+                html_thumb(browser, folder / out["file"], png, entry["kind"] == "slides")
+            thumb, out["w"], out["h"] = to_webp(png)
+            if out.get("thumb") and out["thumb"] != thumb.name:
+                (folder / out["thumb"]).unlink(missing_ok=True)  # e.g. a JPEG from older builds
+            out["thumb"] = thumb.name
         except Exception as exc:
             log(f"  ! thumbnail for {out['format']} failed: {exc}")
             errors.append(f"thumbnail for {out['format']}: {exc}")
     return errors
+
+
+def has_thumb(out: dict) -> bool:
+    return out.get("thumb", "").endswith(".webp")
+
+
+def slimmed(out: dict) -> bool:
+    return out["output"] != "html" or out.get("slim", False)
+
+
+def make_slim(outputs: list[dict], folder: Path) -> None:
+    """Slim each HTML output that isn't yet (after its thumbnail, which it doesn't change)."""
+    for out in outputs:
+        if slimmed(out):
+            continue
+        try:
+            before = (folder / out["file"]).stat().st_size
+            slim_html(folder / out["file"])
+            log(f"  slimmed {out['file']}: {before / 1e6:.1f} -> {(folder / out['file']).stat().st_size / 1e6:.1f} MB")
+        except Exception as exc:
+            log(f"  ! slimming {out['file']} failed: {exc}")
+        out["slim"] = True  # a failure would only repeat; the output works as it is
 
 
 def write_site(records: list[dict], out_dir: Path) -> None:
