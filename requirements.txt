@@ -1,4 +1,6 @@
 pyyaml>=6
+# WebP thumbnails
+pillow>=10
 playwright>=1.45
 # some templates execute with the python3 Jupyter kernel
 jupyter
