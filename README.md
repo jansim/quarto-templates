@@ -46,7 +46,9 @@ Whether an entry is a document or slides, whether it renders to PDF or HTML,
 and whether that PDF is typeset by LaTeX or Typst, is inferred from the format
 name. Setup instructions are derived too:
 templates at a repo's root get `quarto use template` / `quarto add`, templates
-in a subfolder get `git clone` + `quarto render`. See the comment at the top of
+in a subfolder get `git clone` + `quarto render`, and example documents in a
+subfolder of a repo whose extension sits at its root (e.g. Closeread's gallery)
+get `quarto add`. See the comment at the top of
 `templates.toml` for all keys.
 
 ## Building

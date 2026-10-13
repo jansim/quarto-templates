@@ -288,6 +288,14 @@
       s.push({ text: 'Render it', cmd: 'quarto render ' + file });
       return [{ steps: s }];
     }
+    if (t.setup === 'example') {
+      // an example document for an extension that ships no template
+      return [{ steps: [
+        { text: 'Install the extension', cmd: 'quarto add ' + t.repo },
+        yamlStep,
+        { text: 'Render', cmd: 'quarto render document.qmd' }
+      ] }];
+    }
     var fresh = [{ text: 'Create a project from the template', cmd: 'quarto use template ' + t.repo }];
     if (!t.native) fresh.push({ text: 'Set the front matter of the new document', cmd: t.yaml, yaml: true });
     fresh.push({ text: 'Preview it', cmd: 'quarto preview' });
