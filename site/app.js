@@ -80,12 +80,18 @@
   function outTag(t) { return '<span class="tag c-' + t.output + '">' + ICON[t.output] + outLabel(t) + '</span>'; }
 
   // A rendered thumbnail, or a drawn stand-in when the build had none.
-  function preview(t) {
+  // Small previews (grid, collage) let 1x screens pick the smaller thumbnail;
+  // eager ones are on screen at load (the collage), the rest wait for scrolling.
+  function preview(t, opts) {
+    opts = opts || {};
     var shape = shapeOf(t);
     var bar = shape === 'web' ? '<div class="pv-bar"><i></i><i></i><i></i></div>' : '';
     if (t.thumb) {
-      return '<div class="pv pv-' + shape + '">' + bar + '<img src="' + esc(t.thumb) + '" width="' + (t.w || 640) +
-        '" height="' + (t.h || 480) + '" alt="" loading="lazy" decoding="async"></div>';
+      var w = t.w || 640;
+      var set = opts.small && t.thumb_sm ? ' srcset="' + esc(t.thumb_sm) + ' 360w, ' + esc(t.thumb) + ' ' + w + 'w"' +
+        ' sizes="(max-width: 640px) 75vw, 260px"' : '';
+      return '<div class="pv pv-' + shape + '">' + bar + '<img src="' + esc(t.thumb) + '"' + set + ' width="' + w +
+        '" height="' + (t.h || 480) + '" alt="" loading="' + (opts.eager ? 'eager' : 'lazy') + '" decoding="async"></div>';
     }
     return '<div class="pv pv-' + shape + '">' + bar + mock(shape, t.accent) + '</div>';
   }
@@ -159,7 +165,7 @@
       return '<button type="button" class="tile' + (animate ? ' entering' : '') + '" data-open="' + esc(t.id) + '" aria-label="Open ' + esc(t.title) +
         '" data-jx="' + (rnd() * 2 - 1).toFixed(3) + '" data-jy="' + (rnd() * 2 - 1).toFixed(3) +
         '" style="--r:' + r.toFixed(1) + 'deg;--d:' + (k * 60) + 'ms;z-index:' + (order[k] + 1) + '">' +
-        '<div class="tile-frame">' + preview(t) + '</div>' +
+        '<div class="tile-frame">' + preview(t, { small: true, eager: true }) + '</div>' +
         '<span class="tile-sticker" style="background:' + STICKERS[k] + ';transform:rotate(' + (r > 0 ? -4 : 3) + 'deg)">' + esc(t.title) + '</span></button>';
     }).join('');
     var box = $('collage');
@@ -246,7 +252,7 @@
     var rot = i % 2 ? 2.5 : -2.5;
     return '<button type="button" class="card" data-open="' + esc(t.id) + '" aria-haspopup="dialog">' +
       '<div class="card-thumb dots' + (shape === 'page' ? ' is-page' : '') + '" style="background-color:' + TINT[t.kind] + '">' +
-        '<div class="card-main" style="width:' + pw + ';transform:translate(0%,' + ty + ') rotate(' + rot + 'deg)">' + preview(t) + '</div>' +
+        '<div class="card-main" style="width:' + pw + ';transform:translate(0%,' + ty + ') rotate(' + rot + 'deg)">' + preview(t, { small: true }) + '</div>' +
         '<div class="tags">' + kindTag(t) + outTag(t) + '</div>' +
       '</div>' +
       '<div class="card-body"><span class="card-title">' + esc(t.title) + '</span>' +
@@ -473,6 +479,7 @@
   // pdf.js draws the pages straight onto the stage: no toolbar, just pages to scroll.
 
   var pdfjs = null;     // promise of the pdf.js library, loaded on first use
+  var pdfWorker = null; // one worker for every PDF, rather than starting one per document
   var viewer = null;    // the PDF on the stage: { task, observer }
 
   function loadPdfjs() {
@@ -524,7 +531,8 @@
     applyZoom(box);
     loadPdfjs().then(function (lib) {
       if (viewer !== v) return null;
-      v.task = lib.getDocument(t.url);
+      if (!pdfWorker) pdfWorker = new lib.PDFWorker();
+      v.task = lib.getDocument({ url: t.url, worker: pdfWorker });
       return v.task.promise;
     }).then(function (doc) {
       if (!doc || viewer !== v) return;

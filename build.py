@@ -60,7 +60,13 @@ DOCS = {
 # Base format -> the system that typesets it (None: HTML, no typesetting).
 ENGINES = {"pdf": "latex", "beamer": "latex", "typst": "typst"}
 RENDER_TIMEOUT = 20 * 60
+# Thumbnails are WebP: a full one, also used as the dialog's stand-in, and a
+# small one that 1x screens get in the grid (via srcset).
 THUMB_WIDTH = 640
+THUMB_SMALL_WIDTH = 360
+THUMB_QUALITY = 80
+# Bump to remake every thumbnail from the cached renders (no re-render).
+THUMB_VERSION = "2"
 
 
 def log(msg: str) -> None:
@@ -400,11 +406,12 @@ def render_entry(entry: dict, rev: str | None, dest: Path) -> list[dict]:
 
 
 def pdf_thumb(pdf: Path, out: Path, page: int) -> None:
+    """Lossless PNG of one page of pdf, THUMB_WIDTH wide."""
     if not shutil.which("pdftoppm"):
         raise RuntimeError("pdftoppm not found; install poppler-utils (apt) or poppler (brew)")
     stem = out.with_suffix("")
     run(["pdftoppm", "-f", str(page), "-l", str(page), "-singlefile",
-         "-jpeg", "-jpegopt", "quality=82", "-scale-to-x", str(THUMB_WIDTH), "-scale-to-y", "-1",
+         "-png", "-scale-to-x", str(THUMB_WIDTH), "-scale-to-y", "-1",
          str(pdf), str(stem)], timeout=120)
 
 
@@ -442,21 +449,20 @@ def html_thumb(browser: Browser, page_file: Path, out: Path, slides: bool) -> No
             page.wait_for_function("window.Reveal && Reveal.isReady && Reveal.isReady()", timeout=30_000)
         page.evaluate("document.fonts.ready")
         page.wait_for_timeout(600)
-        page.screenshot(path=str(out), type="jpeg", quality=82)
+        page.screenshot(path=str(out), type="png")
     finally:
         page.close()
 
 
-def image_size(jpeg: Path) -> tuple[int, int]:
-    """Width and height of a JPEG, read from its SOF marker."""
-    data = jpeg.read_bytes()
-    i = 2
-    while i < len(data):
-        marker, length = data[i + 1], int.from_bytes(data[i + 2:i + 4], "big")
-        if marker in (0xC0, 0xC1, 0xC2):
-            return int.from_bytes(data[i + 7:i + 9], "big"), int.from_bytes(data[i + 5:i + 7], "big")
-        i += 2 + length
-    return 0, 0
+def encode_thumbs(png: Path, full: Path, small: Path) -> tuple[int, int]:
+    """Write png as WebP at full size and THUMB_SMALL_WIDTH wide; return the full size."""
+    from PIL import Image
+    with Image.open(png) as im:
+        im = im.convert("RGB")
+        im.save(full, "WEBP", quality=THUMB_QUALITY, method=6)
+        h = round(im.height * THUMB_SMALL_WIDTH / im.width)
+        im.resize((THUMB_SMALL_WIDTH, h), Image.LANCZOS).save(small, "WEBP", quality=THUMB_QUALITY, method=6)
+        return im.size
 
 
 # --- site data --------------------------------------------------------------
@@ -501,6 +507,7 @@ def site_record(entry: dict, manifest: dict) -> dict:
         "engine": ENGINES.get(base_of(out["format"])),
         "url": f"t/{entry['id']}/{out['file']}",
         "thumb": f"t/{entry['id']}/{out['thumb']}" if out.get("thumb") else None,
+        "thumb_sm": f"t/{entry['id']}/{out['thumb_sm']}" if out.get("thumb_sm") else None,
         "w": out.get("w"),
         "h": out.get("h"),
         "yaml": front_matter_snippet(entry),
@@ -554,7 +561,7 @@ def build_entry(entry: dict, args, browser: Browser) -> dict | None:
 
     selected = not args.only or entry["id"] in args.only
     if old and old.get("key") == key and not (args.force and selected):
-        if all(out.get("thumb") for out in old["outputs"]) and old.get("source"):
+        if all(thumb_current(out) for out in old["outputs"]) and old.get("source"):
             log(f"= {entry['id']} (cached)")
             return old
         # Rendered fine earlier, but a thumbnail or the source is missing: make just that.
@@ -605,23 +612,33 @@ def build_entry(entry: dict, args, browser: Browser) -> dict | None:
     return {**manifest, "error": "; ".join(thumb_errors)} if thumb_errors else manifest
 
 
+def thumb_current(out: dict) -> bool:
+    return bool(out.get("thumb")) and out.get("thumb_v") == THUMB_VERSION
+
+
 def make_thumbs(entry: dict, outputs: list[dict], folder: Path, browser: Browser) -> list[str]:
-    """Add a thumbnail to each output that lacks one; return error messages."""
+    """Add thumbnails to each output that lacks current ones; return error messages."""
     errors = []
     for out in outputs:
-        if out.get("thumb"):
+        if thumb_current(out):
             continue
-        thumb = Path(out["file"]).with_suffix(".jpg").name
+        stem = Path(out["file"]).stem
+        png = folder / f"{stem}.thumb.png"
+        thumb, thumb_sm = f"{stem}.webp", f"{stem}-{THUMB_SMALL_WIDTH}.webp"
         try:
             if out["output"] == "pdf":
-                pdf_thumb(folder / out["file"], folder / thumb, entry["preview_page"])
+                pdf_thumb(folder / out["file"], png, entry["preview_page"])
             else:
-                html_thumb(browser, folder / out["file"], folder / thumb, entry["kind"] == "slides")
-            out["thumb"] = thumb
-            out["w"], out["h"] = image_size(folder / thumb)
+                html_thumb(browser, folder / out["file"], png, entry["kind"] == "slides")
+            out["w"], out["h"] = encode_thumbs(png, folder / thumb, folder / thumb_sm)
+            for old in {out.get("thumb"), out.get("thumb_sm")} - {None, thumb, thumb_sm}:
+                (folder / old).unlink(missing_ok=True)  # from an earlier thumbnail version
+            out.update(thumb=thumb, thumb_sm=thumb_sm, thumb_v=THUMB_VERSION)
         except Exception as exc:
             log(f"  ! thumbnail for {out['format']} failed: {exc}")
             errors.append(f"thumbnail for {out['format']}: {exc}")
+        finally:
+            png.unlink(missing_ok=True)
     return errors
 
 
@@ -632,7 +649,7 @@ def write_site(records: list[dict], out_dir: Path) -> None:
         src = CACHE / "renders" / rec["id"]
         dest = out_dir / "t" / rec["id"]
         dest.mkdir(parents=True, exist_ok=True)
-        for rel in (rec["url"], rec["thumb"], rec.get("source")):
+        for rel in (rec["url"], rec["thumb"], rec.get("thumb_sm"), rec.get("source")):
             if rel:
                 shutil.copy2(src / Path(rel).name, dest / Path(rel).name)
     index = out_dir / "index.html"
