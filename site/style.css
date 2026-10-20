@@ -111,7 +111,7 @@ img { display: block; max-width: 100%; }
   box-shadow: 3px 3px 0 var(--ink);
 }
 .shuffle {
-  position: absolute; right: 0; bottom: -8px; z-index: 30; height: 48px; padding: 0 18px 0 14px;
+  position: absolute; right: 0; bottom: -52px; z-index: 30; height: 48px; padding: 0 18px 0 14px;
   display: flex; align-items: center; gap: 8px; border-radius: 999px; border: 2px solid var(--ink);
   background: #fff; color: var(--ink); font-size: 15px; font-weight: 700; cursor: pointer;
   box-shadow: 4px 4px 0 var(--slides);
@@ -428,7 +428,7 @@ img { display: block; max-width: 100%; }
 /* --- small screens --------------------------------------------------------- */
 
 @media (max-width: 760px) {
-  .hero-inner { padding: 40px 16px 56px; gap: 40px; }
+  .hero-inner { padding: 40px 16px 76px; gap: 40px; }
   .hero h1 { font-size: 46px; }
   .lede { font-size: 17px; }
   .collage { height: 340px; flex-basis: 100%; }
