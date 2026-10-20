@@ -10,11 +10,10 @@
   var PDFJS = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/';
   var COLLAGE_MAX = 6;
   var ZOOM_MIN = 48;    // smallest PDF page size, in % of full width; at the bottom pages sit two to a row
-  var LINK = /\[([^\]]+)\]\((https:\/\/[^)\s]+)\)/g;  // a description's [text](https://...) links
 
   TEMPLATES.forEach(function (t, i) {
     t.accent = ACCENTS[i % ACCENTS.length];
-    t.haystack = [t.title, t.origin, (t.description || '').replace(LINK, '$1'), t.format, ENGINE[t.engine] || ''].join(' ').toLowerCase();
+    t.haystack = [t.title, t.origin, t.description || '', t.format, ENGINE[t.engine] || ''].join(' ').toLowerCase();
   });
 
   var state = {
@@ -34,9 +33,6 @@
     return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
       return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
     });
-  }
-  function linkify(s) {
-    return esc(s).replace(LINK, '<a href="$2" target="_blank" rel="noopener">$1</a>');
   }
   function $(id) { return document.getElementById(id); }
   function copyText(text) {
@@ -451,7 +447,7 @@
     h += '<div class="titles"><h2 id="dlg-title">' + esc(t.title) + '</h2>' +
       '<a class="origin-line" href="' + esc(t.src) + '" target="_blank" rel="noopener">' +
       (/^https:\/\/github\.com\//.test(t.src) ? ICON.github : '') + '<span class="origin-text">' + esc(t.origin) + ICON.external + '</span></a>' +
-      (t.description ? '<p>' + linkify(t.description) + '</p>' : '') + '</div>';
+      (t.description ? '<p>' + esc(t.description) + '</p>' : '') + '</div>';
 
     h += '<div class="setup"><div class="setup-head"><h3>' + ICON.terminal + 'Set it up</h3>' +
       (t.builtin ? '<span class="pill">Nothing to install</span>' : '') + '</div>';

@@ -120,6 +120,9 @@ def load_config() -> list[dict]:
                 isinstance(r, list) and len(r) == 2 and all(isinstance(x, str) for x in r) and r[0]
                 for r in replace)):
             raise ValueError(f"[{tid}]: replace must be a list of [old, new] string pairs")
+        url = e.get("url")
+        if url is not None and not (isinstance(url, str) and url.startswith("https://")):
+            raise ValueError(f"[{tid}]: url must be an https:// link")
         builtin = repo is None
         if builtin:
             file = e.get("file") or ("slides.qmd" if kind == "slides" else "document.qmd")
@@ -136,6 +139,7 @@ def load_config() -> list[dict]:
             "remove_options": remove,
             "replace": replace,
             "description": e.get("description", ""),
+            "url": url,
             "preview_page": int(e.get("preview-page", 1)),
             "builtin": builtin,
             "kind": kind,
@@ -498,6 +502,8 @@ def site_record(entry: dict, manifest: dict) -> dict:
         rec["repo"] = repo
         rec["file"] = file
         rec["setup"] = "extension" if sub == "." else "clone"
+    if entry["url"]:
+        rec["src"] = entry["url"]
     out = manifest["outputs"][0]
     if out.get("example"):
         rec["setup"] = "example"
