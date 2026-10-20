@@ -24,7 +24,8 @@
 #                settings that don't suit the variant set in `options`.
 #   description  One sentence shown in the template's popup. Only for what
 #                the preview and title don't already convey; keep notes on
-#                a template's look as comments instead.
+#                a template's look as comments instead. [text](https://...)
+#                makes a link.
 #   preview-page Page of the PDF to use as the thumbnail (default: 1).
 #   kind         "doc" or "slides", for formats whose base format suggests the
 #                wrong one (e.g. Typst slide decks).
@@ -61,67 +62,67 @@ format = "revealjs"
 title = "Reveal.js: Beige"
 format = "revealjs"
 options = { theme = "beige" }
-description = "A built-in Reveal.js theme."
+description = "A [built-in Reveal.js theme](https://quarto.org/docs/presentations/revealjs/themes.html)."
 
 [revealjs-blood]
 title = "Reveal.js: Blood"
 format = "revealjs"
 options = { theme = "blood" }
-description = "A built-in Reveal.js theme."
+description = "A [built-in Reveal.js theme](https://quarto.org/docs/presentations/revealjs/themes.html)."
 
 [revealjs-dark]
 title = "Reveal.js: Dark"
 format = "revealjs"
 options = { theme = "dark" }
-description = "A built-in Reveal.js theme."
+description = "A [built-in Reveal.js theme](https://quarto.org/docs/presentations/revealjs/themes.html)."
 
 [revealjs-dracula]
 title = "Reveal.js: Dracula"
 format = "revealjs"
 options = { theme = "dracula" }
-description = "A built-in Reveal.js theme."
+description = "A [built-in Reveal.js theme](https://quarto.org/docs/presentations/revealjs/themes.html)."
 
 [revealjs-league]
 title = "Reveal.js: League"
 format = "revealjs"
 options = { theme = "league" }
-description = "A built-in Reveal.js theme."
+description = "A [built-in Reveal.js theme](https://quarto.org/docs/presentations/revealjs/themes.html)."
 
 [revealjs-moon]
 title = "Reveal.js: Moon"
 format = "revealjs"
 options = { theme = "moon" }
-description = "A built-in Reveal.js theme."
+description = "A [built-in Reveal.js theme](https://quarto.org/docs/presentations/revealjs/themes.html)."
 
 [revealjs-night]
 title = "Reveal.js: Night"
 format = "revealjs"
 options = { theme = "night" }
-description = "A built-in Reveal.js theme."
+description = "A [built-in Reveal.js theme](https://quarto.org/docs/presentations/revealjs/themes.html)."
 
 [revealjs-serif]
 title = "Reveal.js: Serif"
 format = "revealjs"
 options = { theme = "serif" }
-description = "A built-in Reveal.js theme."
+description = "A [built-in Reveal.js theme](https://quarto.org/docs/presentations/revealjs/themes.html)."
 
 [revealjs-simple]
 title = "Reveal.js: Simple"
 format = "revealjs"
 options = { theme = "simple" }
-description = "A built-in Reveal.js theme."
+description = "A [built-in Reveal.js theme](https://quarto.org/docs/presentations/revealjs/themes.html)."
 
 [revealjs-sky]
 title = "Reveal.js: Sky"
 format = "revealjs"
 options = { theme = "sky" }
-description = "A built-in Reveal.js theme."
+description = "A [built-in Reveal.js theme](https://quarto.org/docs/presentations/revealjs/themes.html)."
 
 [revealjs-solarized]
 title = "Reveal.js: Solarized"
 format = "revealjs"
 options = { theme = "solarized" }
-description = "A built-in Reveal.js theme."
+description = "A [built-in Reveal.js theme](https://quarto.org/docs/presentations/revealjs/themes.html)."
 
 [beamer]
 title = "Beamer"
