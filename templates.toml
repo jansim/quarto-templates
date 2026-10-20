@@ -57,6 +57,72 @@ format = "typst"
 title = "Reveal.js"
 format = "revealjs"
 
+[revealjs-beige]
+title = "Reveal.js: Beige"
+format = "revealjs"
+options = { theme = "beige" }
+description = "Reveal.js's own themes, picked with the theme option: default, beige, blood, dark, dracula, league, moon, night, serif, simple, sky or solarized."
+
+[revealjs-blood]
+title = "Reveal.js: Blood"
+format = "revealjs"
+options = { theme = "blood" }
+description = "Reveal.js's own themes, picked with the theme option: default, beige, blood, dark, dracula, league, moon, night, serif, simple, sky or solarized."
+
+[revealjs-dark]
+title = "Reveal.js: Dark"
+format = "revealjs"
+options = { theme = "dark" }
+description = "Reveal.js's own themes, picked with the theme option: default, beige, blood, dark, dracula, league, moon, night, serif, simple, sky or solarized."
+
+[revealjs-dracula]
+title = "Reveal.js: Dracula"
+format = "revealjs"
+options = { theme = "dracula" }
+description = "Reveal.js's own themes, picked with the theme option: default, beige, blood, dark, dracula, league, moon, night, serif, simple, sky or solarized."
+
+[revealjs-league]
+title = "Reveal.js: League"
+format = "revealjs"
+options = { theme = "league" }
+description = "Reveal.js's own themes, picked with the theme option: default, beige, blood, dark, dracula, league, moon, night, serif, simple, sky or solarized."
+
+[revealjs-moon]
+title = "Reveal.js: Moon"
+format = "revealjs"
+options = { theme = "moon" }
+description = "Reveal.js's own themes, picked with the theme option: default, beige, blood, dark, dracula, league, moon, night, serif, simple, sky or solarized."
+
+[revealjs-night]
+title = "Reveal.js: Night"
+format = "revealjs"
+options = { theme = "night" }
+description = "Reveal.js's own themes, picked with the theme option: default, beige, blood, dark, dracula, league, moon, night, serif, simple, sky or solarized."
+
+[revealjs-serif]
+title = "Reveal.js: Serif"
+format = "revealjs"
+options = { theme = "serif" }
+description = "Reveal.js's own themes, picked with the theme option: default, beige, blood, dark, dracula, league, moon, night, serif, simple, sky or solarized."
+
+[revealjs-simple]
+title = "Reveal.js: Simple"
+format = "revealjs"
+options = { theme = "simple" }
+description = "Reveal.js's own themes, picked with the theme option: default, beige, blood, dark, dracula, league, moon, night, serif, simple, sky or solarized."
+
+[revealjs-sky]
+title = "Reveal.js: Sky"
+format = "revealjs"
+options = { theme = "sky" }
+description = "Reveal.js's own themes, picked with the theme option: default, beige, blood, dark, dracula, league, moon, night, serif, simple, sky or solarized."
+
+[revealjs-solarized]
+title = "Reveal.js: Solarized"
+format = "revealjs"
+options = { theme = "solarized" }
+description = "Reveal.js's own themes, picked with the theme option: default, beige, blood, dark, dracula, league, moon, night, serif, simple, sky or solarized."
+
 [beamer]
 title = "Beamer"
 format = "beamer"
