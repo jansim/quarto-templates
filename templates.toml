@@ -73,6 +73,8 @@ format = "revealjs"
 options = { theme = "blood" }
 url = "https://quarto.org/docs/presentations/revealjs/themes.html"
 description = "A built-in Reveal.js theme."
+# the theme's large title font doesn't fit the full title
+replace = [['title: "Reproducible Reports with Quarto"', 'title: "Reports with Quarto"']]
 
 [revealjs-dark]
 title = "Reveal.js: Dark"
